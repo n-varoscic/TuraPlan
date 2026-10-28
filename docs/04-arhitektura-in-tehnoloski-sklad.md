@@ -174,13 +174,12 @@ Podrobna utemeljitev vsake odločitve (kontekst, obravnavane alternative, posled
 
 | Odločitev | Utemeljitev |
 |---|---|
-| **Ločen frontend (React) in backend (Django)** | Vsak del ima jasno nalogo: frontend prikaz, backend pravila in podatki. Dela se lahko razvijata in testirata ločeno, isti API pa lahko kasneje uporabi tudi mobilna aplikacija ali povezava z ERP sistemom. React je najbolj razširjena knjižnica za spletne vmesnike, z veliko dokumentacije in primerov. |
-| **REST API v JSON** | Standarden in preprost način komunikacije med frontendom in backendom; vsako končno točko je mogoče neposredno preizkusiti (npr. v brskalniku ali s Postmanom). Django REST Framework poskrbi za pretvorbo v JSON, preverjanje vnosov in pravice. |
-| **Django + Django REST Framework za backend** | Vgrajeni modeli, migracije, uporabniki in admin vmesnik, zato se lahko posvetimo poslovni logiki. Vse je v Pythonu. |
-| **JWT za prijavo** | Primeren, ko frontend in backend tečeta ločeno: backend ne hrani seje, frontend pa žeton pošilja z vsako zahtevo. Je uveljavljen način pri aplikacijah z ločenim frontendom. |
-| **Pravice in pravila vedno preveri backend** | API je dostopen tudi mimo vmesnika, zato frontend gumbe le skrije ali onemogoči, vsako pravilo (vloga, kapaciteta, prehod statusa) pa ponovno preveri backend. |
-| **SQLite** | Ni je treba nameščati, je privzeta v Djangu in zadošča za interno aplikacijo z nekaj uporabniki. Ker do nje dostopamo prek Django ORM, jo lahko kasneje zamenjamo s PostgreSQL brez spreminjanja kode. |
-| **OpenStreetMap namesto Google Maps; optimizacija ni del MVP** | Jedro rešitve je planiranje tur in kontrola kapacitete, ne algoritem poti. OpenStreetMap je brezplačen in ne potrebuje API ključa; Google Maps je predviden kot nadgradnja. |
+| **React za frontend** ([ADR-01](adr/01-react-za-frontend.md)) | Vmesnik ima dva zelo različna pogleda (disponent na računalniku, voznik na telefonu), ki se sproti posodabljata. React ju gradi iz ponovno uporabnih komponent in ima pripravljene knjižnice za prehode med zasloni in zemljevid. |
+| **Django + Django REST Framework za backend** ([ADR-02](adr/02-django-in-drf-za-backend.md)) | Backend potrebuje uporabnike z vlogami, relacijsko bazo in REST API. Django ima uporabnike, delo z bazo in admin vmesnik že vgrajene, DRF pa doda REST API, zato se lahko posvetimo poslovni logiki. |
+| **REST API v JSON** ([ADR-03](adr/03-rest-api-v-json.md)) | Frontend in backend sta ločeni aplikaciji, zato komunicirata prek API-ja. REST je standarden in preprost: vsak vir ima svoj naslov, vsako končno točko je mogoče neposredno preizkusiti, na enak način se lahko kasneje poveže tudi ERP sistem. |
+| **Prijava z JWT** ([ADR-04](adr/04-prijava-z-jwt.md)) | Frontend žeton pošlje z vsako zahtevo, backend pa iz njega prepozna uporabnika in njegovo vlogo. Enak način prijave lahko kasneje uporabi mobilna aplikacija, frontend in backend pa ni treba imeti na istem naslovu. |
+| **SQLite** ([ADR-05](adr/05-sqlite-kot-podatkovna-baza.md)) | Podatki so relacijski, uporabnikov je malo. SQLite ne potrebuje namestitve in je privzeta v Djangu; prek Django ORM jo lahko kasneje zamenjamo s PostgreSQL brez spreminjanja kode. |
+| **OpenStreetMap za zemljevid** ([ADR-06](adr/06-openstreetmap-za-zemljevid.md)) | Jedro rešitve je postopek planiranja in kontrola kapacitete, ne algoritem poti. OpenStreetMap je brezplačen in ne potrebuje API ključa; Google Maps je predviden kot nadgradnja. |
 
 ## Možnost nadaljnjega razvoja
 
