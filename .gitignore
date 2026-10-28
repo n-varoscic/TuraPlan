@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+
+# Skrivnosti (gesla, ključi)
+.env
+
+# Backend (Python / Django)
+__pycache__/
+.venv/
+*.sqlite3
+
+# Frontend (React / Vite)
+node_modules/
+dist/
