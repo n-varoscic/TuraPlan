@@ -15,5 +15,6 @@ COPY . .
 
 EXPOSE 8000
 
+# Ob zagonu najprej posodobi tabele v bazi (migrate), nato zažene strežnik
 # 0.0.0.0 pomeni, da je strežnik dosegljiv tudi izven vsebnika
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]

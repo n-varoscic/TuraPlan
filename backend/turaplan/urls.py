@@ -6,11 +6,12 @@ Glavna URL konfiguracija: poveže naslove (URL) s pogledi (views)
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 
 from .views import health
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/health/", health, name="health"),
+    path("api/auth/", include("users.urls")),
 ]
