@@ -1,7 +1,11 @@
 import { Link, Outlet } from "react-router-dom";
+import { useAuth } from "../auth/useAuth.js";
+import { ROLE_LABELS } from "../auth/roles.js";
 
 // Skupna postavitev vseh strani: glava zgoraj, vsebina strani spodaj
 export default function Layout() {
+  const { user, logout } = useAuth();
+
   return (
     <>
       <nav className="navbar navbar-dark bg-primary">
@@ -9,6 +13,16 @@ export default function Layout() {
           <Link className="navbar-brand fw-bold" to="/">
             TuraPlan
           </Link>
+          {user && (
+            <div className="d-flex align-items-center gap-3 text-white">
+              <span className="small">
+                {user.first_name} {user.last_name} · {ROLE_LABELS[user.role]}
+              </span>
+              <button className="btn btn-sm btn-outline-light" onClick={logout}>
+                Odjava
+              </button>
+            </div>
+          )}
         </div>
       </nav>
       <main className="container py-4">

@@ -3,15 +3,75 @@
 // Naslov API-ja se lahko nastavi z VITE_API_URL (npr. v Dockerju)
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
 
-// Pošlje GET zahtevo in vrne odgovor kot JSON, ob napaki vrže izjemo
-async function apiGet(path) {
-  const response = await fetch(`${API_URL}${path}`);
-  if (!response.ok) {
-    throw new Error(`Napaka ${response.status} pri ${path}`);
-  }
-  return response.json();
+// Django Admin teče na istem strežniku kot API
+export const ADMIN_URL = API_URL.replace(/\/api$/, "/admin/");
+
+// Žetona hranimo v brskalniku, da prijava ostane tudi po osvežitvi strani
+const ACCESS_KEY = "accessToken";
+const REFRESH_KEY = "refreshToken";
+
+export function hasToken() {
+  return localStorage.getItem(ACCESS_KEY) !== null;
 }
 
-export function getHealth() {
-  return apiGet("/health/");
+function clearTokens() {
+  localStorage.removeItem(ACCESS_KEY);
+  localStorage.removeItem(REFRESH_KEY);
+}
+
+// Z žetonom za osvežitev pridobi nov dostopni žeton, vrne true ob uspehu
+async function refreshAccessToken() {
+  const refresh = localStorage.getItem(REFRESH_KEY);
+  if (!refresh) return false;
+  const response = await fetch(`${API_URL}/auth/refresh/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh }),
+  });
+  if (!response.ok) return false;
+  const data = await response.json();
+  localStorage.setItem(ACCESS_KEY, data.access);
+  return true;
+}
+
+// Pošlje zahtevo z žetonom v glavi in vrne odgovor kot JSON
+async function apiRequest(path, { method = "GET", body } = {}, retry = true) {
+  const headers = { "Content-Type": "application/json" };
+  const token = localStorage.getItem(ACCESS_KEY);
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const response = await fetch(`${API_URL}${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  // Dostopni žeton je potekel: enkrat ga osvežimo in zahtevo ponovimo
+  if (response.status === 401 && token && retry) {
+    if (await refreshAccessToken()) return apiRequest(path, { method, body }, false);
+    clearTokens();
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const error = new Error(data?.detail ?? `Napaka ${response.status}`);
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
+  return data;
+}
+
+export async function login(email, password) {
+  const data = await apiRequest("/auth/login/", { method: "POST", body: { email, password } });
+  localStorage.setItem(ACCESS_KEY, data.access);
+  localStorage.setItem(REFRESH_KEY, data.refresh);
+}
+
+export function logout() {
+  clearTokens();
+}
+
+export function getMe() {
+  return apiRequest("/auth/me/");
 }
