@@ -1,0 +1,28 @@
+# Zažene backend in frontend z enim ukazom: docker compose up
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Baza je v volumnu, zato ostane ohranjena tudi po ponovnem zagonu
+      DJANGO_DB_PATH: /data/db.sqlite3
+    volumes:
+      # Koda z računalnika je povezana v vsebnik, spremembe se takoj uporabijo
+      - ./backend:/app
+      - backend-data:/data
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      # node_modules ostane iz vsebnika, ker so knjižnice za macOS in Linux različne
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  backend-data:
