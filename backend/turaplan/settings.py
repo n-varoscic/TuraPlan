@@ -7,6 +7,7 @@ Nastavitve Django projekta TuraPlan
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 # Mapa backend/, od katere se računajo vse poti v projektu
@@ -37,6 +38,8 @@ INSTALLED_APPS = [
     # Zunanje knjižnice
     "rest_framework",  # Django REST Framework za REST API v JSON
     "corsheaders",  # Dovoli zahteve s frontenda na drugem naslovu (CORS)
+    # Naše aplikacije
+    "users",
 ]
 
 MIDDLEWARE = [
@@ -81,6 +84,10 @@ DATABASES = {
 }
 
 
+# Lasten model uporabnika s prijavo z e-pošto in vlogo
+AUTH_USER_MODEL = "users.User"
+
+
 # Preverjanje gesel
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -108,3 +115,20 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CORS_ALLOWED_ORIGINS = os.environ.get(
     "DJANGO_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
 ).split(",")
+
+
+# Django REST Framework: vsak API privzeto zahteva prijavo z JWT žetonom
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+}
+
+# JWT: kratkotrajni dostopni žeton in dolgotrajnejši žeton za osvežitev
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+}
