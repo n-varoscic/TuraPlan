@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getTours } from "../api/client.js";
 import DateRangePicker from "../components/DateRangePicker.jsx";
 import DeliveryProgress from "../components/DeliveryProgress.jsx";
@@ -7,6 +7,11 @@ import StatusBadge from "../components/StatusBadge.jsx";
 import TourLoad from "../components/TourLoad.jsx";
 import { formatDate, todayIso } from "../format.js";
 import { TOUR_STATUS } from "../labels.js";
+
+// Osnutek se odpre za sestavljanje, ostale ture na podrobnostih
+function tourPath(tour) {
+  return tour.status === "DRAFT" ? `/tours/${tour.id}/edit` : `/tours/${tour.id}`;
+}
 
 // Začetna stran disponenta: vse ture s statusom, zasedenostjo in napredkom dostav
 export default function ToursPage() {
@@ -41,7 +46,10 @@ export default function ToursPage() {
 
   return (
     <>
-      <h1 className="h3 mb-3">Seznam tur</h1>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h1 className="h3 mb-0">Seznam tur</h1>
+        <Link to="/tours/new" className="btn btn-primary">+ Nova tura</Link>
+      </div>
 
       <div className="row g-2 mb-3 align-items-end">
         <div className="col-auto">
@@ -88,7 +96,7 @@ export default function ToursPage() {
             </thead>
             <tbody>
               {tours.map((tour) => (
-                <tr key={tour.id} role="button" onClick={() => navigate(`/tours/${tour.id}`)}>
+                <tr key={tour.id} role="button" onClick={() => navigate(tourPath(tour))}>
                   <td>{formatDate(tour.dispatch_date)}</td>
                   <td>{tour.vehicle.registration_number}</td>
                   <td>{tour.driver.first_name} {tour.driver.last_name}</td>
