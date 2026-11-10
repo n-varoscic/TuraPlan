@@ -8,17 +8,17 @@ export default function Layout() {
 
   return (
     <>
-      <nav className="navbar navbar-dark bg-primary">
+      <nav className="navbar tp-navbar">
         <div className="container">
-          <Link className="navbar-brand fw-bold" to="/">
+          <Link className="navbar-brand" to="/">
             TuraPlan
           </Link>
           {user && (
-            <div className="d-flex align-items-center gap-3 text-white">
+            <div className="d-flex align-items-center gap-3">
               <span className="small">
                 {user.first_name} {user.last_name} · {ROLE_LABELS[user.role]}
               </span>
-              <button className="btn btn-sm btn-outline-light" onClick={logout}>
+              <button className="btn btn-sm btn-outline-primary" onClick={logout}>
                 Odjava
               </button>
             </div>
