@@ -6,11 +6,13 @@ from rest_framework.views import APIView
 from users.permissions import IsDispatcher
 from users.serializers import UserSerializer
 
-from .models import Order, Stop, Tour
+from .models import Order, Stop, Tour, Vehicle
 from .serializers import (
     OrderSerializer, TourCreateSerializer, TourDetailSerializer, TourListSerializer, VehicleSerializer,
 )
-from .services import add_stop, available_drivers, available_vehicles, remove_stop, unassigned_orders
+from .services import (
+    add_stop, available_drivers, available_vehicles, change_vehicle, remove_stop, unassigned_orders,
+)
 
 
 def tours_with_details():
@@ -53,11 +55,17 @@ class TourListView(generics.ListAPIView):
 
 
 class TourDetailView(generics.RetrieveAPIView):
-    """GET /api/tours/{id}/ s postanki"""
+    """GET /api/tours/{id}/ s postanki, PATCH /api/tours/{id}/ zamenja vozilo"""
 
     permission_classes = [IsDispatcher]
     serializer_class = TourDetailSerializer
     queryset = tours_with_details()
+
+    def patch(self, request, pk):
+        tour = get_object_or_404(Tour, pk=pk)
+        vehicle = get_object_or_404(Vehicle, pk=request.data.get("vehicle"))
+        change_vehicle(tour, vehicle)
+        return tour_response(tour)
 
 
 class TourOptionsView(APIView):

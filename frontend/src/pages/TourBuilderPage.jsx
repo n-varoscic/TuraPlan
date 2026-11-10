@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { addStop, getOrders, getTour, removeStop } from "../api/client.js";
+import { addStop, changeVehicle, getOrders, getTour, getTourOptions, removeStop } from "../api/client.js";
 import StatusBadge from "../components/StatusBadge.jsx";
 import TourLoad from "../components/TourLoad.jsx";
 import { formatDate, formatNumber } from "../format.js";
@@ -11,6 +11,7 @@ export default function TourBuilderPage() {
   const { id } = useParams();
   const [tour, setTour] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [freeVehicles, setFreeVehicles] = useState([]);
   const [region, setRegion] = useState("");
   const [error, setError] = useState("");
 
@@ -19,6 +20,7 @@ export default function TourBuilderPage() {
       .then(async (data) => {
         setTour(data);
         setOrders(await getOrders(data.dispatch_date));
+        setFreeVehicles((await getTourOptions(data.dispatch_date)).vehicles);
       })
       .catch((err) => setError(err.message));
   }, [id]);
@@ -35,10 +37,28 @@ export default function TourBuilderPage() {
     }
   }
 
+  // Po menjavi vozila je prejšnje vozilo spet prosto, zato osvežimo tudi seznam vozil
+  async function selectVehicle(vehicleId) {
+    setError("");
+    try {
+      const updated = await changeVehicle(tour.id, vehicleId);
+      const options = await getTourOptions(tour.dispatch_date);
+      setTour(updated);
+      setFreeVehicles(options.vehicles);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   if (!tour) return error ? <div className="alert alert-danger">{error}</div> : <p className="text-muted">Nalagam …</p>;
 
   const regions = [...new Set(orders.map((order) => order.region))].sort();
   const shownOrders = region ? orders.filter((order) => order.region === region) : orders;
+  // Trenutno vozilo ture in vozila, ki so na ta datum še prosta
+  const otherVehicles = freeVehicles.filter((vehicle) => vehicle.id !== tour.vehicle.id);
+  const vehicles = [tour.vehicle, ...otherVehicles].sort((a, b) =>
+    a.registration_number.localeCompare(b.registration_number),
+  );
 
   return (
     <>
@@ -46,15 +66,38 @@ export default function TourBuilderPage() {
       <div className="d-flex align-items-center gap-3 mt-2 mb-1">
         <h1 className="h3 mb-0">Sestavljanje ture</h1>
         <StatusBadge {...TOUR_STATUS[tour.status]} />
-        <Link to={`/tours/${tour.id}`} className="btn btn-sm btn-outline-primary ms-auto">Podrobnosti</Link>
+        {/* Spremembe se shranjujejo ob vsakem kliku, zato gumb samo zapre urejanje */}
+        <span className="small text-muted ms-auto">Spremembe se shranjujejo sproti</span>
+        <Link to={`/tours/${tour.id}`} className="btn btn-sm btn-primary">Končaj urejanje</Link>
       </div>
       <p className="text-muted mb-3">
-        {formatDate(tour.dispatch_date)} · {tour.vehicle.registration_number} · {tour.driver.first_name}{" "}
-        {tour.driver.last_name}
+        {formatDate(tour.dispatch_date)} · {tour.driver.first_name} {tour.driver.last_name}
       </p>
 
       <div className="card px-4 py-3 mb-3">
-        <div>Zasedenost vozila: <TourLoad tour={tour} /></div>
+        <div className="row g-3 align-items-center">
+          <div className="col-auto">
+            <label htmlFor="vehicle" className="form-label small text-muted mb-1">Vozilo</label>
+            <select
+              id="vehicle"
+              className="form-select form-select-sm"
+              value={tour.vehicle.id}
+              onChange={(e) => selectVehicle(Number(e.target.value))}
+              disabled={tour.status !== "DRAFT"}
+            >
+              {vehicles.map((vehicle) => (
+                <option key={vehicle.id} value={vehicle.id}>
+                  {vehicle.registration_number} · {formatNumber(vehicle.max_load_kg)} kg ·{" "}
+                  {vehicle.pallet_spaces} pal.
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="col">
+            <div className="small text-muted mb-1">Zasedenost vozila</div>
+            <TourLoad tour={tour} showWarnings />
+          </div>
+        </div>
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
