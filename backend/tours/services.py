@@ -1,4 +1,4 @@
-"""Poslovna pravila tur: sestavljanje, zasedenost vozila in napredek dostav"""
+"""Poslovna pravila tur: sestavljanje, kapaciteta vozila in napredek dostav"""
 
 from decimal import Decimal
 
@@ -7,18 +7,26 @@ from rest_framework.exceptions import ValidationError
 
 from users.models import User
 
-from .models import Order, Stop, Vehicle
+from .models import Order, Stop, Tour, Vehicle
 
 # Naročila, ki jih lahko disponent doda v turo
 UNASSIGNED_STATUSES = [Order.Status.NEW, Order.Status.NOT_DELIVERED]
 
 
 def tour_load(tour):
-    """Vrne skupno težo in palete vseh naročil v turi"""
+    """Vrne skupno težo in palete naročil v turi ter za koliko je kapaciteta vozila presežena"""
     orders = [stop.order for stop in tour.stops.all()]
+    weight = sum((order.weight_kg for order in orders), Decimal(0))
+    pallets = sum((order.pallets for order in orders), Decimal(0))
+    # Vrednost, ki je točno enaka zmogljivosti, ni presežena
+    weight_exceeded_by = max(weight - tour.vehicle.max_load_kg, Decimal(0))
+    pallets_exceeded_by = max(pallets - tour.vehicle.pallet_spaces, Decimal(0))
     return {
-        "total_weight_kg": sum((order.weight_kg for order in orders), Decimal(0)),
-        "total_pallets": sum((order.pallets for order in orders), Decimal(0)),
+        "total_weight_kg": weight,
+        "total_pallets": pallets,
+        "weight_exceeded_by": weight_exceeded_by,
+        "pallets_exceeded_by": pallets_exceeded_by,
+        "is_over_capacity": weight_exceeded_by > 0 or pallets_exceeded_by > 0,
     }
 
 
@@ -51,6 +59,21 @@ def tour_creation_errors(date, vehicle, driver):
     if not available_drivers(date).filter(pk=driver.pk).exists():
         errors.append("Voznik ni aktiven ali ima na ta datum že turo")
     return errors
+
+
+def change_vehicle(tour, vehicle):
+    """Zamenja vozilo osnutka, novo vozilo mora biti aktivno in na ta datum prosto"""
+    if vehicle.pk == tour.vehicle_id:
+        return
+    errors = []
+    if tour.status != Tour.Status.DRAFT:
+        errors.append("Vozilo je mogoče zamenjati samo v osnutku ture")
+    if not available_vehicles(tour.dispatch_date).filter(pk=vehicle.pk).exists():
+        errors.append("Vozilo ni aktivno ali ima na ta datum že turo")
+    if errors:
+        raise ValidationError(errors)
+    tour.vehicle = vehicle
+    tour.save()
 
 
 def unassigned_orders(date=None, region=None):
