@@ -1,29 +1,9 @@
 from datetime import timedelta
 
-import pytest
-from django.core.management import call_command
 from django.utils import timezone
 from rest_framework.test import APIClient
 
 from tours.models import Tour
-from users.models import User
-
-
-@pytest.fixture
-def seeded(db):
-    # Testni podatki: včeraj zaključena, danes v dostavi, jutri potrjena in osnutek
-    call_command("seed_data", stdout=None)
-
-
-def client_for(email):
-    client = APIClient()
-    client.force_authenticate(User.objects.get(email=email))
-    return client
-
-
-@pytest.fixture
-def dispatcher_client(seeded):
-    return client_for("disponent@turaplan.si")
 
 
 def today_tour():
@@ -79,8 +59,8 @@ def test_tour_detail_contains_stops_with_result_and_reason(dispatcher_client):
     assert stops[3]["marked_at"] is None
 
 
-def test_driver_cannot_see_dispatcher_tour_list(seeded):
-    response = client_for("voznik@turaplan.si").get("/api/tours/")
+def test_driver_cannot_see_dispatcher_tour_list(driver_client):
+    response = driver_client.get("/api/tours/")
     assert response.status_code == 403
 
 
