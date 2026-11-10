@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "corsheaders",  # Dovoli zahteve s frontenda na drugem naslovu (CORS)
     # Naše aplikacije
     "users",
+    "tours",
 ]
 
 MIDDLEWARE = [
