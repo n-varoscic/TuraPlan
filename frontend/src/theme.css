@@ -207,3 +207,34 @@ main h1 {
   color: #fff;
   font-weight: 500;
 }
+
+.btn-outline-danger {
+  --bs-btn-color: #9b3d38;
+  --bs-btn-border-color: #efc4c0;
+  --bs-btn-hover-bg: #f9e3e1;
+  --bs-btn-hover-color: #9b3d38;
+  --bs-btn-hover-border-color: #e39b95;
+  --bs-btn-active-bg: #f3cfcb;
+  --bs-btn-active-color: #9b3d38;
+  --bs-btn-active-border-color: #e39b95;
+}
+
+/* Zaporedna številka postanka v krogu */
+.tp-sequence {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid #9ccbab;
+  border-radius: 50%;
+  color: #2f6b45;
+  font-weight: 500;
+}
+
+/* Seznama na strani sestavljanja ture se drsata, glava strani ostane vidna */
+.tp-scroll-list {
+  max-height: 60vh;
+  overflow-y: auto;
+}

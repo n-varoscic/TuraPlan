@@ -2,8 +2,8 @@ from rest_framework import serializers
 
 from users.serializers import UserSerializer
 
-from .models import Stop, Tour, Vehicle
-from .services import delivery_progress, tour_load
+from .models import Order, Stop, Tour, Vehicle
+from .services import delivery_progress, tour_creation_errors, tour_load
 
 
 class VehicleSerializer(serializers.ModelSerializer):
@@ -55,3 +55,39 @@ class TourDetailSerializer(TourListSerializer):
         fields = TourListSerializer.Meta.fields + [
             "note", "confirmed_at", "started_at", "completed_at", "stops",
         ]
+
+
+class TourCreateSerializer(serializers.ModelSerializer):
+    """Nova tura z datumom odpreme, vozilom in voznikom"""
+
+    class Meta:
+        model = Tour
+        fields = ["dispatch_date", "vehicle", "driver"]
+        # Zasedenost vozila in voznika preverimo sami, da so razlogi v slovenščini
+        validators = []
+
+    def validate(self, data):
+        errors = tour_creation_errors(data["dispatch_date"], data["vehicle"], data["driver"])
+        if errors:
+            raise serializers.ValidationError(errors)
+        return data
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    """Nerazporejeno naročilo z oznako, ali je datum ture po roku odpreme"""
+
+    customer = serializers.CharField(source="customer.name")
+    city = serializers.CharField(source="customer.city")
+    region = serializers.CharField(source="customer.region")
+    is_late = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = [
+            "id", "number", "customer", "city", "region", "received_date", "dispatch_deadline",
+            "weight_kg", "pallets", "description", "status", "is_late",
+        ]
+
+    def get_is_late(self, order):
+        date = self.context.get("date")
+        return bool(date and date > order.dispatch_deadline)

@@ -30,6 +30,9 @@ export default function TourDetailPage() {
           Tura {formatDate(tour.dispatch_date)} · {tour.vehicle.registration_number}
         </h1>
         <StatusBadge {...TOUR_STATUS[tour.status]} />
+        {tour.status === "DRAFT" && (
+          <Link to={`/tours/${tour.id}/edit`} className="btn btn-sm btn-primary ms-auto">Sestavi turo</Link>
+        )}
       </div>
 
       <dl className="row mb-4">

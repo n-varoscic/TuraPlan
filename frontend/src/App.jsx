@@ -5,7 +5,9 @@ import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import HomeRedirect from "./pages/HomeRedirect.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import MyToursPage from "./pages/MyToursPage.jsx";
+import NewTourPage from "./pages/NewTourPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
+import TourBuilderPage from "./pages/TourBuilderPage.jsx";
 import TourDetailPage from "./pages/TourDetailPage.jsx";
 import ToursPage from "./pages/ToursPage.jsx";
 
@@ -19,6 +21,14 @@ export default function App() {
         <Route
           path="/tours"
           element={<ProtectedRoute role={ROLES.DISPATCHER}><ToursPage /></ProtectedRoute>}
+        />
+        <Route
+          path="/tours/new"
+          element={<ProtectedRoute role={ROLES.DISPATCHER}><NewTourPage /></ProtectedRoute>}
+        />
+        <Route
+          path="/tours/:id/edit"
+          element={<ProtectedRoute role={ROLES.DISPATCHER}><TourBuilderPage /></ProtectedRoute>}
         />
         <Route
           path="/tours/:id"

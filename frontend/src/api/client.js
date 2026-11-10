@@ -34,6 +34,13 @@ async function refreshAccessToken() {
   return true;
 }
 
+// Besedilo napake iz odgovora: {"detail": "…"}, ["razlog", …] ali {"polje": ["razlog"]}
+function errorMessage(data, status) {
+  if (!data) return `Napaka ${status}`;
+  if (data.detail) return data.detail;
+  return Object.values(data).flat().join(" ");
+}
+
 // Pošlje zahtevo z žetonom v glavi in vrne odgovor kot JSON
 async function apiRequest(path, { method = "GET", body } = {}, retry = true) {
   const headers = { "Content-Type": "application/json" };
@@ -54,7 +61,7 @@ async function apiRequest(path, { method = "GET", body } = {}, retry = true) {
 
   const data = await response.json().catch(() => null);
   if (!response.ok) {
-    const error = new Error(data?.detail ?? `Napaka ${response.status}`);
+    const error = new Error(errorMessage(data, response.status));
     error.status = response.status;
     error.data = data;
     throw error;
@@ -76,7 +83,7 @@ export function getMe() {
   return apiRequest("/auth/me/");
 }
 
-// Seznam tur, filtri so neobvezni: { date: "2026-11-10", status: "DRAFT" }
+// Seznam tur, filtri so neobvezni: { date_from: "2026-11-10", status: "DRAFT" }
 export function getTours(filters = {}) {
   const params = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
   return apiRequest(`/tours/?${params}`);
@@ -84,4 +91,27 @@ export function getTours(filters = {}) {
 
 export function getTour(id) {
   return apiRequest(`/tours/${id}/`);
+}
+
+// Prosta vozila in vozniki za novo turo na izbrani datum
+export function getTourOptions(date) {
+  return apiRequest(`/tours/options/?date=${date}`);
+}
+
+export function createTour(data) {
+  return apiRequest("/tours/", { method: "POST", body: data });
+}
+
+// Nerazporejena naročila, ki jih lahko dodamo v turo z datumom odpreme date
+export function getOrders(date) {
+  return apiRequest(`/orders/?date=${date}`);
+}
+
+// Dodajanje in odstranjevanje postanka vrneta posodobljeno turo
+export function addStop(tourId, orderId) {
+  return apiRequest(`/tours/${tourId}/stops/`, { method: "POST", body: { order: orderId } });
+}
+
+export function removeStop(stopId) {
+  return apiRequest(`/stops/${stopId}/`, { method: "DELETE" });
 }
