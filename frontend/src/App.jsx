@@ -6,6 +6,7 @@ import HomeRedirect from "./pages/HomeRedirect.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import MyToursPage from "./pages/MyToursPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
+import TourDetailPage from "./pages/TourDetailPage.jsx";
 import ToursPage from "./pages/ToursPage.jsx";
 
 // Seznam strani: vsak naslov (path) prikaže svojo komponento
@@ -18,6 +19,10 @@ export default function App() {
         <Route
           path="/tours"
           element={<ProtectedRoute role={ROLES.DISPATCHER}><ToursPage /></ProtectedRoute>}
+        />
+        <Route
+          path="/tours/:id"
+          element={<ProtectedRoute role={ROLES.DISPATCHER}><TourDetailPage /></ProtectedRoute>}
         />
         <Route
           path="/my-tours"
