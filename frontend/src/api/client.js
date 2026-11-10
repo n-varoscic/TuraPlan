@@ -93,6 +93,11 @@ export function getTour(id) {
   return apiRequest(`/tours/${id}/`);
 }
 
+// Zamenja vozilo osnutka in vrne posodobljeno turo
+export function changeVehicle(tourId, vehicleId) {
+  return apiRequest(`/tours/${tourId}/`, { method: "PATCH", body: { vehicle: vehicleId } });
+}
+
 // Prosta vozila in vozniki za novo turo na izbrani datum
 export function getTourOptions(date) {
   return apiRequest(`/tours/options/?date=${date}`);
