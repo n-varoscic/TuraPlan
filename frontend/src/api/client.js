@@ -75,3 +75,13 @@ export function logout() {
 export function getMe() {
   return apiRequest("/auth/me/");
 }
+
+// Seznam tur, filtri so neobvezni: { date: "2026-11-10", status: "DRAFT" }
+export function getTours(filters = {}) {
+  const params = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
+  return apiRequest(`/tours/?${params}`);
+}
+
+export function getTour(id) {
+  return apiRequest(`/tours/${id}/`);
+}

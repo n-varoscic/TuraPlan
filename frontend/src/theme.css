@@ -1,0 +1,209 @@
+/*
+  Barvna tema TuraPlan: pastelno zelena, bež podlaga in tanjša pisava Inter
+  Prepiše privzete barve Bootstrapa, zato komponente ostanejo enake
+*/
+
+:root {
+  /* Pisava */
+  --bs-body-font-family: "Inter", system-ui, sans-serif;
+  --bs-body-font-weight: 300;
+  --bs-body-color: #2f2c27;
+  --bs-body-color-rgb: 47, 44, 39;
+
+  /* Podlaga in robovi v bež odtenkih */
+  --bs-body-bg: #faf7f1;
+  --bs-secondary-bg: #ece5d8;
+  --bs-tertiary-bg: #f3ede3;
+  --bs-border-color: #e6ddcf;
+  --bs-secondary-color: rgba(47, 44, 39, 0.6);
+
+  /* Glavna barva in povezave: umirjena zelena */
+  --bs-primary: #4f8a63;
+  --bs-primary-rgb: 79, 138, 99;
+  --bs-link-color-rgb: 63, 115, 81;
+  --bs-link-hover-color-rgb: 47, 90, 62;
+  --bs-focus-ring-color: rgba(127, 179, 143, 0.3);
+
+  /* Pastelne barve za statuse: ozadje, besedilo in rob */
+  --bs-success-rgb: 125, 187, 145;
+  --bs-success-bg-subtle: #dcefe2;
+  --bs-success-text-emphasis: #2f6b45;
+  --bs-success-border-subtle: #bfe0c9;
+
+  --bs-danger-rgb: 227, 155, 149;
+  --bs-danger-bg-subtle: #f9e3e1;
+  --bs-danger-text-emphasis: #9b3d38;
+  --bs-danger-border-subtle: #efc4c0;
+
+  --bs-warning-rgb: 240, 210, 150;
+  --bs-warning-bg-subtle: #fbefd5;
+  --bs-warning-text-emphasis: #87601a;
+  --bs-warning-border-subtle: #f1dcae;
+
+  --bs-info-rgb: 150, 186, 214;
+  --bs-info-bg-subtle: #e2ecf5;
+  --bs-info-text-emphasis: #2e5675;
+  --bs-info-border-subtle: #c6d9e9;
+
+  --bs-secondary-bg-subtle: #efe9df;
+  --bs-secondary-text-emphasis: #6b6255;
+  --bs-secondary-border-subtle: #e2d9ca;
+
+  /* Lastne barve aplikacije */
+  --tp-navbar-bg: #c7e6cf;
+  --tp-navbar-color: #1f3a2a;
+}
+
+h1, h2, h3, h4, h5, h6, strong, dt {
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* Glava aplikacije */
+.tp-navbar {
+  background-color: var(--tp-navbar-bg);
+  color: var(--tp-navbar-color);
+  border-bottom: 1px solid #b3d9be;
+}
+
+.tp-navbar .navbar-brand {
+  color: var(--tp-navbar-color);
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+
+/* Naslov strani je manjši od imena aplikacije v glavi */
+main h1 {
+  font-size: 1.25rem;
+}
+
+/* Gumbi v zeleni barvi */
+.btn-primary {
+  --bs-btn-bg: #4f8a63;
+  --bs-btn-border-color: #4f8a63;
+  --bs-btn-hover-bg: #437a56;
+  --bs-btn-hover-border-color: #437a56;
+  --bs-btn-active-bg: #3a6b4b;
+  --bs-btn-active-border-color: #3a6b4b;
+  --bs-btn-disabled-bg: #8fb89c;
+  --bs-btn-disabled-border-color: #8fb89c;
+  --bs-btn-font-weight: 500;
+}
+
+.btn-outline-primary {
+  --bs-btn-color: #3f7351;
+  --bs-btn-border-color: #9ccbab;
+  --bs-btn-hover-bg: #dcefe2;
+  --bs-btn-hover-color: #2f5a3e;
+  --bs-btn-hover-border-color: #9ccbab;
+  --bs-btn-active-bg: #c7e6cf;
+  --bs-btn-active-color: #2f5a3e;
+  --bs-btn-active-border-color: #9ccbab;
+  --bs-btn-disabled-color: #3f7351;
+  --bs-btn-disabled-border-color: #9ccbab;
+}
+
+/* Polja obrazcev ob kliku dobijo zelen rob */
+.form-control:focus,
+.form-select:focus {
+  border-color: #9ccbab;
+  box-shadow: 0 0 0 0.2rem var(--bs-focus-ring-color);
+}
+
+/* Tabele kot bele kartice na bež podlagi */
+.table-responsive {
+  background-color: #fffdf9;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.75rem;
+}
+
+.table {
+  --bs-table-bg: transparent;
+  --bs-table-hover-bg: rgba(125, 187, 145, 0.18);
+  margin-bottom: 0;
+}
+
+.table-light {
+  --bs-table-bg: #f3ede3;
+  --bs-table-color: #6b6255;
+  --bs-table-border-color: var(--bs-border-color);
+}
+
+.table thead th {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.table-danger {
+  --bs-table-bg: #fbeceb;
+  --bs-table-color: inherit;
+  --bs-table-border-color: var(--bs-border-color);
+}
+
+.badge {
+  font-weight: 500;
+}
+
+.card {
+  --bs-card-bg: #fffdf9;
+  --bs-card-border-color: var(--bs-border-color);
+  border-radius: 0.75rem;
+}
+
+/* Ob prehodu z miško se vrstica in gumbi nežno obarvajo */
+.table > tbody > tr > *,
+.btn,
+.form-select {
+  transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.form-select:hover {
+  border-color: #9ccbab;
+}
+
+/* Koledar za izbiro obdobja */
+.tp-calendar {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 4px);
+  width: 290px;
+}
+
+.tp-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.tp-day {
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  padding: 0.35rem 0;
+  min-width: 2rem;
+  color: inherit;
+  font-weight: 300;
+  transition: background-color 0.1s;
+}
+
+.tp-day:hover {
+  background-color: #dcefe2;
+}
+
+.tp-day-today {
+  font-weight: 600;
+}
+
+.tp-day-in-range {
+  background-color: #e8f4ec;
+  border-radius: 0;
+}
+
+.tp-day-selected,
+.tp-day-selected:hover {
+  background-color: #4f8a63;
+  color: #fff;
+  font-weight: 500;
+}

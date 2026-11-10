@@ -126,6 +126,8 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    # Decimalna števila (teža, palete) v JSON pošiljamo kot števila, ne kot besedilo
+    "COERCE_DECIMAL_TO_STRING": False,
 }
 
 # JWT: kratkotrajni dostopni žeton in dolgotrajnejši žeton za osvežitev

@@ -27,8 +27,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="row justify-content-center">
-      <div className="col-12 col-sm-8 col-md-5 col-lg-4">
+    <div className="row justify-content-center pt-md-5">
+      <div className="col-12 col-sm-8 col-md-5 col-lg-4 card border shadow-sm p-4">
         <h1 className="h4 mb-3">Prijava</h1>
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
