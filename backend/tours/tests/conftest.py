@@ -10,6 +10,12 @@ from tours.models import Tour, Vehicle
 from users.models import User
 
 
+@pytest.fixture(autouse=True)
+def no_nominatim(monkeypatch):
+    # Testi nikoli ne kličejo prave storitve Nominatim; brez zamenjave lokacije ni mogoče določiti
+    monkeypatch.setattr("tours.services.geocode", lambda address: None)
+
+
 @pytest.fixture
 def seeded(db):
     # Testni podatki: včeraj zaključena, danes v dostavi, jutri potrjena in osnutek
