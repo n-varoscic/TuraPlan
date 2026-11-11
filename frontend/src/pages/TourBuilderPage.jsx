@@ -9,6 +9,7 @@ import StatusBadge from "../components/StatusBadge.jsx";
 import TourLoad from "../components/TourLoad.jsx";
 import { formatDate, formatNumber, pluralize } from "../format.js";
 import { TOUR_STATUS } from "../labels.js";
+import { groupStops } from "../stopGroups.js";
 
 // Sestavljanje ture: levo nerazporejena naročila, desno postanki ture
 export default function TourBuilderPage() {
@@ -83,13 +84,7 @@ export default function TourBuilderPage() {
 
   const regions = [...new Set(orders.map((order) => order.region))].sort();
   const shownOrders = region ? orders.filter((order) => order.region === region) : orders;
-  // Zaporedne postanke iste stranke združimo, da so prikazani z enakim ozadjem
-  const groups = [];
-  for (const stop of tour.stops) {
-    const last = groups.at(-1);
-    if (last && last.customerId === stop.customer_id) last.stops.push(stop);
-    else groups.push({ customerId: stop.customer_id, customer: stop.customer, stops: [stop] });
-  }
+  const groups = groupStops(tour.stops);
   const lastSequence = tour.stops.length;
 
   // Trenutno vozilo ture in vozila, ki so na ta datum še prosta

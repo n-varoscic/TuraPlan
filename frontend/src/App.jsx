@@ -4,6 +4,7 @@ import Layout from "./components/Layout.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import HomeRedirect from "./pages/HomeRedirect.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
+import MyTourPage from "./pages/MyTourPage.jsx";
 import MyToursPage from "./pages/MyToursPage.jsx";
 import NewTourPage from "./pages/NewTourPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
@@ -37,6 +38,10 @@ export default function App() {
         <Route
           path="/my-tours"
           element={<ProtectedRoute role={ROLES.DRIVER}><MyToursPage /></ProtectedRoute>}
+        />
+        <Route
+          path="/my-tours/:id"
+          element={<ProtectedRoute role={ROLES.DRIVER}><MyTourPage /></ProtectedRoute>}
         />
         <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />
       </Route>
