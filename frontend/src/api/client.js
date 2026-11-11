@@ -1,7 +1,8 @@
 // Vsi klici na backend gredo skozi to datoteko
 
-// Naslov API-ja se lahko nastavi z VITE_API_URL (npr. v Dockerju)
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
+// Naslov API-ja se lahko nastavi z VITE_API_URL, sicer je backend na istem računalniku kot frontend.
+// Tako aplikacija deluje tudi na telefonu, odprta prek naslova računalnika, npr. http://192.168.1.14:5173
+const API_URL = import.meta.env.VITE_API_URL ?? `http://${window.location.hostname}:8000/api`;
 
 // Django Admin teče na istem strežniku kot API
 export const ADMIN_URL = API_URL.replace(/\/api$/, "/admin/");
@@ -134,6 +135,25 @@ export function confirmTour(tourId) {
 // Vrnitev potrjene ture v osnutek, dokler je voznik ni začel
 export function unconfirmTour(tourId) {
   return apiRequest(`/tours/${tourId}/unconfirm/`, { method: "POST" });
+}
+
+// Ture prijavljenega voznika
+export function getMyTours() {
+  return apiRequest("/my-tours/");
+}
+
+export function startTour(tourId) {
+  return apiRequest(`/tours/${tourId}/start/`, { method: "POST" });
+}
+
+// Voznik zaključi turo, ko so označeni vsi postanki
+export function completeTour(tourId) {
+  return apiRequest(`/tours/${tourId}/complete/`, { method: "POST" });
+}
+
+// Označitev postanka: result je "DELIVERED" ali "NOT_DELIVERED", pri nedostavi je razlog obvezen
+export function markStop(stopId, result, reason = "") {
+  return apiRequest(`/stops/${stopId}/result/`, { method: "POST", body: { result, reason } });
 }
 
 // Premik postanka na poljubno mesto, npr. ob vlečenju z miško

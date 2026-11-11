@@ -282,3 +282,14 @@ main h1 {
   --bs-btn-hover-color: rgb(var(--bs-link-hover-color-rgb));
   --bs-btn-active-color: rgb(var(--bs-link-hover-color-rgb));
 }
+
+/* Kartica, ki je povezava (seznam tur voznika), se ob prehodu z miško rahlo obarva */
+.tp-card-link:hover {
+  background-color: var(--bs-tertiary-bg);
+}
+
+/* Dolgo besedilo v postanku se prelomi, namesto da bi stran vodoravno drsela */
+.tp-min-w-0 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

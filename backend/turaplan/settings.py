@@ -24,6 +24,9 @@ SECRET_KEY = os.environ.get(
 DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
 
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+if DEBUG:
+    # Pri razvoju je backend dosegljiv tudi z naslova računalnika v lokalnem omrežju (preizkus na telefonu)
+    ALLOWED_HOSTS = ["*"]
 
 
 # Aplikacije
@@ -116,6 +119,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CORS_ALLOWED_ORIGINS = os.environ.get(
     "DJANGO_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
 ).split(",")
+if DEBUG:
+    # Frontend, odprt na telefonu prek naslova računalnika v domačem omrežju, npr. http://192.168.1.14:5173
+    CORS_ALLOWED_ORIGIN_REGEXES = [r"^http://(192\.168|10)(\.\d{1,3}){2}:5173$"]
 
 
 # Django REST Framework: vsak API privzeto zahteva prijavo z JWT žetonom

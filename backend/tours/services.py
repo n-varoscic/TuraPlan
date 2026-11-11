@@ -1,4 +1,4 @@
-"""Poslovna pravila tur: sestavljanje, kapaciteta vozila, potrditev in napredek dostav"""
+"""Poslovna pravila tur: sestavljanje, kapaciteta vozila, potrditev in izvedba dostav"""
 
 from decimal import Decimal
 
@@ -273,3 +273,83 @@ def remove_stop(stop):
         if other.sequence != sequence:
             other.sequence = sequence
             other.save()
+
+
+# Ture, ki jih voznik vidi: osnutki so samo za disponenta
+DRIVER_VISIBLE_STATUSES = [Tour.Status.CONFIRMED, Tour.Status.IN_DELIVERY, Tour.Status.COMPLETED]
+
+
+def driver_tours(driver):
+    """Potrjene, začete in zaključene ture voznika"""
+    return Tour.objects.filter(driver=driver, status__in=DRIVER_VISIBLE_STATUSES)
+
+
+def start_errors(tour):
+    """Vsi razlogi, zakaj voznik ture še ne more začeti"""
+    errors = []
+    if tour.status != Tour.Status.CONFIRMED:
+        errors.append("Začeti je mogoče samo potrjeno turo")
+    if timezone.localdate() < tour.dispatch_date:
+        errors.append("Turo je mogoče začeti najprej na datum odpreme")
+    started = Tour.objects.filter(driver=tour.driver, status=Tour.Status.IN_DELIVERY).exclude(pk=tour.pk)
+    if started.exists():
+        errors.append("Najprej zaključi turo, ki je že v dostavi")
+    return errors
+
+
+def start_tour(tour):
+    """Voznik začne turo, tura je v dostavi"""
+    errors = start_errors(tour)
+    if errors:
+        raise ValidationError(errors)
+    tour.status = Tour.Status.IN_DELIVERY
+    tour.started_at = timezone.now()
+    tour.save()
+
+
+@transaction.atomic
+def mark_stop(stop, result, reason=""):
+    """Označi dostavo ali nedostavo; dokler je tura v dostavi, lahko voznik oznako popravi"""
+    tour, order = stop.tour, stop.order
+    reason = reason.strip()
+    errors = []
+    if tour.status != Tour.Status.IN_DELIVERY:
+        errors.append("Postanke je mogoče označiti samo v turi, ki je v dostavi")
+    # Nedostavljeno naročilo je disponent morda že dodal v novo turo, zato oznake ne smemo več spremeniti
+    if stop.result == Stop.Result.NOT_DELIVERED and order.status != Order.Status.NOT_DELIVERED:
+        errors.append("Naročilo je že v novi turi, zato oznake ni mogoče spremeniti")
+    if result not in (Stop.Result.DELIVERED, Stop.Result.NOT_DELIVERED):
+        errors.append("Rezultat mora biti DELIVERED ali NOT_DELIVERED")
+    if result == Stop.Result.NOT_DELIVERED and not reason:
+        errors.append("Razlog nedostave je obvezen")
+    if errors:
+        raise ValidationError(errors)
+
+    stop.result = result
+    stop.reason = reason if result == Stop.Result.NOT_DELIVERED else ""
+    stop.marked_at = timezone.now()
+    stop.save()
+    # Nedostavljeno naročilo se vrne med nerazporejena za ponovno planiranje
+    order.status = Order.Status.DELIVERED if result == Stop.Result.DELIVERED else Order.Status.NOT_DELIVERED
+    order.save()
+
+
+def complete_errors(tour):
+    """Vsi razlogi, zakaj voznik ture še ne more zaključiti"""
+    errors = []
+    if tour.status != Tour.Status.IN_DELIVERY:
+        errors.append("Zaključiti je mogoče samo turo, ki je v dostavi")
+    pending = tour.stops.filter(result=Stop.Result.PENDING).count()
+    if pending:
+        errors.append(f"Neoznačeni postanki: {pending}")
+    return errors
+
+
+def complete_tour(tour):
+    """Voznik zaključi turo, ko so označeni vsi postanki; nato oznak ni več mogoče spreminjati"""
+    errors = complete_errors(tour)
+    if errors:
+        raise ValidationError(errors)
+    tour.status = Tour.Status.COMPLETED
+    tour.completed_at = timezone.now()
+    tour.save()

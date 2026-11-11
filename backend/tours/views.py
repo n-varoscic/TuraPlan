@@ -3,7 +3,8 @@ from rest_framework import generics, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from users.permissions import IsDispatcher
+from users.models import User
+from users.permissions import IsDispatcher, IsDriver
 from users.serializers import UserSerializer
 
 from .models import Order, Stop, Tour, Vehicle
@@ -11,8 +12,9 @@ from .serializers import (
     OrderSerializer, TourCreateSerializer, TourDetailSerializer, TourListSerializer, VehicleSerializer,
 )
 from .services import (
-    add_stop, available_drivers, available_vehicles, change_vehicle, confirm_tour, move_stop, move_stop_to,
-    remove_stop, unassigned_orders, unconfirm_tour, update_customer_delivery_note, update_driver_note,
+    add_stop, available_drivers, available_vehicles, change_vehicle, complete_tour, confirm_tour,
+    driver_tours, mark_stop, move_stop, move_stop_to, remove_stop, start_tour, unassigned_orders,
+    unconfirm_tour, update_customer_delivery_note, update_driver_note,
 )
 
 
@@ -56,11 +58,22 @@ class TourListView(generics.ListAPIView):
 
 
 class TourDetailView(generics.RetrieveAPIView):
-    """GET /api/tours/{id}/ s postanki, PATCH /api/tours/{id}/ zamenja vozilo"""
+    """GET /api/tours/{id}/ s postanki (voznik samo svojo potrjeno turo), PATCH zamenja vozilo"""
 
-    permission_classes = [IsDispatcher]
     serializer_class = TourDetailSerializer
-    queryset = tours_with_details()
+
+    def get_permissions(self):
+        # Turo si lahko ogleda tudi voznik, spreminja jo samo disponent
+        if self.request.method == "GET":
+            return [(IsDispatcher | IsDriver)()]
+        return [IsDispatcher()]
+
+    def get_queryset(self):
+        tours = tours_with_details()
+        if self.request.user.role == User.Role.DRIVER:
+            # Tuja tura ali osnutek za voznika ne obstaja, zato dobi 404
+            tours = tours.filter(pk__in=driver_tours(self.request.user))
+        return tours
 
     def patch(self, request, pk):
         tour = get_object_or_404(Tour, pk=pk)
@@ -172,4 +185,49 @@ class TourUnconfirmView(APIView):
     def post(self, request, pk):
         tour = get_object_or_404(Tour, pk=pk)
         unconfirm_tour(tour)
+        return tour_response(tour)
+
+
+class MyTourListView(generics.ListAPIView):
+    """GET /api/my-tours/ vrne potrjene, začete in zaključene ture prijavljenega voznika"""
+
+    permission_classes = [IsDriver]
+    serializer_class = TourListSerializer
+
+    def get_queryset(self):
+        return tours_with_details().filter(pk__in=driver_tours(self.request.user)).order_by("-dispatch_date")
+
+
+class TourStartView(APIView):
+    """POST /api/tours/{id}/start/ voznik začne svojo potrjeno turo"""
+
+    permission_classes = [IsDriver]
+
+    def post(self, request, pk):
+        tour = get_object_or_404(driver_tours(request.user), pk=pk)
+        start_tour(tour)
+        return tour_response(tour)
+
+
+class StopResultView(APIView):
+    """POST /api/stops/{id}/result/ z rezultatom DELIVERED ali NOT_DELIVERED in razlogom nedostave"""
+
+    permission_classes = [IsDriver]
+
+    def post(self, request, pk):
+        # Voznik lahko označi samo postanke svojih tur
+        stops = Stop.objects.select_related("tour", "order")
+        stop = get_object_or_404(stops, pk=pk, tour__driver=request.user)
+        mark_stop(stop, request.data.get("result"), request.data.get("reason", ""))
+        return tour_response(stop.tour)
+
+
+class TourCompleteView(APIView):
+    """POST /api/tours/{id}/complete/ voznik zaključi turo, ko so označeni vsi postanki"""
+
+    permission_classes = [IsDriver]
+
+    def post(self, request, pk):
+        tour = get_object_or_404(driver_tours(request.user), pk=pk)
+        complete_tour(tour)
         return tour_response(tour)
