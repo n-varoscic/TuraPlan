@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import F
 from rest_framework.exceptions import ValidationError
 
 from users.models import User
@@ -11,6 +12,9 @@ from .models import Order, Stop, Tour, Vehicle
 
 # Naročila, ki jih lahko disponent doda v turo
 UNASSIGNED_STATUSES = [Order.Status.NEW, Order.Status.NOT_DELIVERED]
+
+# Opomba za voznika in stalna opomba stranke imata največ 300 znakov
+DRIVER_NOTE_MAX_LENGTH = 300
 
 
 def tour_load(tour):
@@ -97,9 +101,92 @@ def add_stop(tour, order):
     if errors:
         raise ValidationError(errors)
 
-    Stop.objects.create(tour=tour, order=order, sequence=tour.stops.count() + 1)
+    # Naročilo stranke, ki je že v turi, gre takoj za njen zadnji postanek, sicer na konec
+    customer_stops = tour.stops.filter(order__customer=order.customer)
+    if customer_stops.exists():
+        sequence = customer_stops.order_by("-sequence").first().sequence + 1
+        # Postanke za njim premaknemo za eno mesto naprej, od zadnjega proti prvemu,
+        # da se zaporedni številki v isti turi nikoli ne podvojita
+        for other in tour.stops.filter(sequence__gte=sequence).order_by("-sequence"):
+            other.sequence += 1
+            other.save()
+    else:
+        sequence = tour.stops.count() + 1
+
+    Stop.objects.create(tour=tour, order=order, sequence=sequence)
     order.status = Order.Status.PLANNED
     order.save()
+
+
+@transaction.atomic
+def move_stop_to(stop, position):
+    """Premakne postanek na mesto position, ostali postanki se zamaknejo"""
+    stops = list(stop.tour.stops.order_by("sequence"))
+    if not 1 <= position <= len(stops):
+        raise ValidationError([f"Mesto mora biti med 1 in {len(stops)}"])
+    stops.remove(stop)
+    stops.insert(position - 1, stop)
+
+    # Najprej vsem postankom damo začasne številke nad obstoječimi,
+    # ker ima vsaka številka v turi lahko samo en postanek
+    stop.tour.stops.update(sequence=F("sequence") + len(stops))
+    for sequence, other in enumerate(stops, start=1):
+        other.sequence = sequence
+        other.save()
+
+
+def move_stop(stop, direction):
+    """Premakne postanek za eno mesto gor (up) ali dol (down)"""
+    if direction not in ("up", "down"):
+        raise ValidationError(["Smer mora biti up ali down"])
+    position = stop.sequence - 1 if direction == "up" else stop.sequence + 1
+    if position < 1:
+        raise ValidationError(["Postanek je že na prvem mestu"])
+    if position > stop.tour.stops.count():
+        raise ValidationError(["Postanek je že na zadnjem mestu"])
+    move_stop_to(stop, position)
+
+
+def characters(count):
+    """Število znakov s pravilnim sklonom: 1 znak, 2 znaka, 3 znake, 5 znakov"""
+    words = {1: "znak", 2: "znaka", 3: "znake", 4: "znake"}
+    return f"{count} {words.get(count % 100, 'znakov')}"
+
+
+def update_driver_note(stop, note):
+    """Shrani opombo za voznika, ki ima lahko največ 300 znakov"""
+    note = note.strip()
+    check_note_length(note)
+    stop.driver_note = note
+    stop.save()
+
+
+def check_note_length(note):
+    """Opomba ima lahko največ 300 znakov, sicer vrne, za koliko je predolga"""
+    if len(note) > DRIVER_NOTE_MAX_LENGTH:
+        raise ValidationError([f"Opomba je predolga za {characters(len(note) - DRIVER_NOTE_MAX_LENGTH)}"])
+
+
+def update_customer_delivery_note(stop, note):
+    """Shrani stalno opombo stranke postanka; enaka opomba za voznika ni več potrebna"""
+    note = note.strip()
+    check_note_length(note)
+    customer = stop.order.customer
+    customer.delivery_note = note
+    customer.save()
+    if note and stop.driver_note == note:
+        stop.driver_note = ""
+        stop.save()
+
+
+def split_customers(tour):
+    """Imena strank, katerih postanki v turi niso zaporedni"""
+    customers = [stop.order.customer for stop in tour.stops.all()]
+    # Stranka je razdeljena, če se pojavi v več ločenih skupinah zaporednih postankov
+    groups = [
+        customer for index, customer in enumerate(customers) if index == 0 or customers[index - 1] != customer
+    ]
+    return sorted({customer.name for customer in groups if groups.count(customer) > 1})
 
 
 @transaction.atomic

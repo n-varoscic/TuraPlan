@@ -27,3 +27,10 @@ export function formatPallets(value) {
   else if (mod === 2) word = "paleti";
   return `${formatNumber(number)} ${word}`;
 }
+
+// Število z ustreznim sklonom: pluralize(2, ["naročilo", "naročili", "naročila", "naročil"]) vrne »2 naročili«
+export function pluralize(count, [one, two, few, many]) {
+  const mod = count % 100;
+  const word = mod === 1 ? one : mod === 2 ? two : mod === 3 || mod === 4 ? few : many;
+  return `${count} ${word}`;
+}

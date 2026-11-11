@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { addStop, changeVehicle, getOrders, getTour, getTourOptions, removeStop } from "../api/client.js";
+import {
+  addStop, changeVehicle, getOrders, getTour, getTourOptions, moveStop, moveStopTo, removeStop,
+  updateDeliveryNote, updateDriverNote,
+} from "../api/client.js";
+import DriverNoteInput from "../components/DriverNoteInput.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import TourLoad from "../components/TourLoad.jsx";
-import { formatDate, formatNumber } from "../format.js";
+import { formatDate, formatNumber, pluralize } from "../format.js";
 import { TOUR_STATUS } from "../labels.js";
 
 // Sestavljanje ture: levo nerazporejena naročila, desno postanki ture
@@ -12,6 +16,11 @@ export default function TourBuilderPage() {
   const [tour, setTour] = useState(null);
   const [orders, setOrders] = useState([]);
   const [freeVehicles, setFreeVehicles] = useState([]);
+  // Postanek, ki ga disponent vleče, in mesto, nad katerim je trenutno
+  const [dragged, setDragged] = useState(null);
+  const [dropSequence, setDropSequence] = useState(null);
+  // Postanek, ki ga je mogoče vleči; ob kliku v polje ali gumb ga izklopimo, da označevanje besedila deluje
+  const [draggableId, setDraggableId] = useState(null);
   const [region, setRegion] = useState("");
   const [error, setError] = useState("");
 
@@ -37,6 +46,24 @@ export default function TourBuilderPage() {
     }
   }
 
+  function endDrag() {
+    setDragged(null);
+    setDropSequence(null);
+  }
+
+  // Spuščen postanek zasede mesto postanka, na katerega ga disponent spusti
+  function dropOn(position) {
+    const stop = dragged;
+    endDrag();
+    if (stop && stop.sequence !== position) update(() => moveStopTo(stop.id, position));
+  }
+
+  // Črta nad ali pod postankom pokaže, kam bo spuščen postanek prišel
+  function dropClass(stop) {
+    if (!dragged || dropSequence !== stop.sequence || dragged.id === stop.id) return "";
+    return dragged.sequence > stop.sequence ? "tp-drop-before" : "tp-drop-after";
+  }
+
   // Po menjavi vozila je prejšnje vozilo spet prosto, zato osvežimo tudi seznam vozil
   async function selectVehicle(vehicleId) {
     setError("");
@@ -54,6 +81,15 @@ export default function TourBuilderPage() {
 
   const regions = [...new Set(orders.map((order) => order.region))].sort();
   const shownOrders = region ? orders.filter((order) => order.region === region) : orders;
+  // Zaporedne postanke iste stranke združimo, da so prikazani z enakim ozadjem
+  const groups = [];
+  for (const stop of tour.stops) {
+    const last = groups.at(-1);
+    if (last && last.customerId === stop.customer_id) last.stops.push(stop);
+    else groups.push({ customerId: stop.customer_id, customer: stop.customer, stops: [stop] });
+  }
+  const lastSequence = tour.stops.length;
+
   // Trenutno vozilo ture in vozila, ki so na ta datum še prosta
   const otherVehicles = freeVehicles.filter((vehicle) => vehicle.id !== tour.vehicle.id);
   const vehicles = [tour.vehicle, ...otherVehicles].sort((a, b) =>
@@ -156,31 +192,112 @@ export default function TourBuilderPage() {
             <div className="card-header">
               <h2 className="h6 mb-0">Postanki ({tour.stops.length})</h2>
             </div>
+            {tour.split_customers.length > 0 && (
+              <div className="alert alert-warning small rounded-0 border-0 border-bottom mb-0 py-2">
+                ⚠ Postanki iste stranke niso zaporedni: {tour.split_customers.join(", ")}
+              </div>
+            )}
             <ul className="list-group list-group-flush tp-scroll-list">
               {tour.stops.length === 0 && (
                 <li className="list-group-item text-muted">Dodaj naročila s seznama na levi.</li>
               )}
-              {tour.stops.map((stop) => (
-                <li key={stop.id} className="list-group-item d-flex align-items-center gap-3">
-                  <span className="tp-sequence">{stop.sequence}</span>
-                  <div className="flex-grow-1">
-                    <div>
-                      {stop.customer} <span className="small text-muted">· {stop.order_number}</span>
-                    </div>
-                    <div className="small text-muted">
-                      {stop.address}, {stop.city} · {formatNumber(stop.weight_kg)} kg ·{" "}
-                      {formatNumber(stop.pallets)} pal.
-                    </div>
-                  </div>
-                  <button
-                    className="btn btn-sm btn-outline-danger"
-                    onClick={() => update(() => removeStop(stop.id))}
-                    aria-label={`Odstrani ${stop.order_number} iz ture`}
-                  >
-                    ×
-                  </button>
-                </li>
-              ))}
+              {groups.map((group) => {
+                const grouped = group.stops.length > 1;
+                return [
+                  grouped && (
+                    <li key={`group-${group.stops[0].id}`} className="list-group-item tp-customer-group py-1 small">
+                      {group.customer} – {pluralize(group.stops.length, ["naročilo", "naročili", "naročila", "naročil"])}
+                    </li>
+                  ),
+                  ...group.stops.map((stop) => (
+                    <li
+                      key={stop.id}
+                      className={[
+                        "list-group-item d-flex align-items-start gap-2 tp-draggable",
+                        grouped && "tp-customer-group",
+                        dragged?.id === stop.id && "tp-dragging",
+                        dropClass(stop),
+                      ].filter(Boolean).join(" ")}
+                      draggable={draggableId === stop.id}
+                      onMouseDown={(e) => {
+                        setDraggableId(e.target.closest("input, button") ? null : stop.id);
+                      }}
+                      onDragStart={(e) => {
+                        e.dataTransfer.effectAllowed = "move";
+                        setDragged(stop);
+                      }}
+                      onDragEnd={endDrag}
+                      onDragOver={(e) => {
+                        if (!dragged) return;
+                        e.preventDefault();
+                        setDropSequence(stop.sequence);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        dropOn(stop.sequence);
+                      }}
+                    >
+                      <span className="tp-drag-handle mt-1" title="Povleci na novo mesto" aria-hidden="true">
+                        ⠿
+                      </span>
+                      <span className="tp-sequence mt-1">{stop.sequence}</span>
+                      <div className="flex-grow-1">
+                        <div>
+                          {stop.customer} <span className="small text-muted">· {stop.order_number}</span>
+                        </div>
+                        <div className="small text-muted">
+                          {stop.address}, {stop.city} · {formatNumber(stop.weight_kg)} kg ·{" "}
+                          {formatNumber(stop.pallets)} pal.
+                        </div>
+                        {stop.delivery_note && (
+                          <div className="small text-info-emphasis mt-1">
+                            📌 Stalna opomba: {stop.delivery_note}{" "}
+                            <button
+                              type="button"
+                              className="btn btn-link btn-sm p-0 small align-baseline"
+                              onClick={() => update(() => updateDeliveryNote(stop.id, ""))}
+                            >
+                              odstrani
+                            </button>
+                          </div>
+                        )}
+                        <DriverNoteInput
+                          // Ob spremembi shranjenih opomb se polje ponastavi na shranjeno opombo za voznika
+                          key={`${stop.id}-${stop.driver_note}-${stop.delivery_note}`}
+                          stop={stop}
+                          onSave={(note) => update(() => updateDriverNote(stop.id, note))}
+                          onSaveAsDeliveryNote={(note) => update(() => updateDeliveryNote(stop.id, note))}
+                        />
+                      </div>
+                      <div className="d-flex gap-1">
+                        <button
+                          className="btn btn-sm btn-outline-primary"
+                          onClick={() => update(() => moveStop(stop.id, "up"))}
+                          disabled={stop.sequence === 1}
+                          aria-label={`Premakni ${stop.order_number} gor`}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          className="btn btn-sm btn-outline-primary"
+                          onClick={() => update(() => moveStop(stop.id, "down"))}
+                          disabled={stop.sequence === lastSequence}
+                          aria-label={`Premakni ${stop.order_number} dol`}
+                        >
+                          ↓
+                        </button>
+                        <button
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => update(() => removeStop(stop.id))}
+                          aria-label={`Odstrani ${stop.order_number} iz ture`}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </li>
+                  )),
+                ];
+              })}
             </ul>
           </div>
         </div>
