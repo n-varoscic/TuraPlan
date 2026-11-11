@@ -3,6 +3,7 @@ from datetime import timedelta
 import pytest
 from django.utils import timezone
 
+from tours.management.commands.seed_data import DRIVER_LUKA_EMAIL, DRIVER_VID_EMAIL
 from tours.models import Order, Stop, Tour
 from tours.tests.conftest import client_for
 
@@ -16,11 +17,11 @@ def started_tour(seeded):
 @pytest.fixture
 def luka_client(seeded):
     # Voznik Luka ima jutri potrjeno turo
-    return client_for("voznik3@turaplan.si")
+    return client_for(DRIVER_LUKA_EMAIL)
 
 
 def luka_tour():
-    return Tour.objects.get(driver__email="voznik3@turaplan.si", status=Tour.Status.CONFIRMED)
+    return Tour.objects.get(driver__email=DRIVER_LUKA_EMAIL, status=Tour.Status.CONFIRMED)
 
 
 def mark(client, stop, result, reason=""):
@@ -33,12 +34,12 @@ def pending_stops(tour):
 
 def test_driver_sees_only_own_confirmed_tours(driver_client):
     tours = driver_client.get("/api/my-tours/").data
-    assert {tour["driver"]["email"] for tour in tours} == {"voznik@turaplan.si"}
+    assert {tour["driver"]["email"] for tour in tours} == {DRIVER_VID_EMAIL}
     assert Tour.Status.DRAFT not in {tour["status"] for tour in tours}
 
 
 def test_driver_cannot_open_draft_or_other_drivers_tour(driver_client, started_tour):
-    draft = Tour.objects.get(driver__email="voznik@turaplan.si", status=Tour.Status.DRAFT)
+    draft = Tour.objects.get(driver__email=DRIVER_VID_EMAIL, status=Tour.Status.DRAFT)
     assert driver_client.get(f"/api/tours/{started_tour.id}/").status_code == 200
     assert driver_client.get(f"/api/tours/{draft.id}/").status_code == 404
     assert driver_client.get(f"/api/tours/{luka_tour().id}/").status_code == 404
@@ -66,7 +67,7 @@ def test_tour_cannot_be_started_while_other_tour_is_in_delivery(driver_client, s
     # Včerajšnja tura je še v dostavi, današnja je potrjena
     started_tour.dispatch_date = timezone.localdate() - timedelta(days=2)
     started_tour.save()
-    tour = Tour.objects.get(driver__email="voznik@turaplan.si", status=Tour.Status.DRAFT)
+    tour = Tour.objects.get(driver__email=DRIVER_VID_EMAIL, status=Tour.Status.DRAFT)
     tour.dispatch_date = timezone.localdate()
     tour.status = Tour.Status.CONFIRMED
     tour.save()

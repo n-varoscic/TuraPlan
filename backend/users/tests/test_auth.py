@@ -14,7 +14,7 @@ def client():
 @pytest.fixture
 def dispatcher(db):
     return User.objects.create_user(
-        "disponent@turaplan.si", PASSWORD, first_name="Ana", role=User.Role.DISPATCHER
+        "dejan.zupan@turaplan.si", PASSWORD, first_name="Ana", role=User.Role.DISPATCHER
     )
 
 
@@ -29,7 +29,7 @@ def test_login_returns_tokens(client, dispatcher):
 
 
 @pytest.mark.parametrize("email, password", [
-    ("disponent@turaplan.si", "napacno-geslo"),
+    ("dejan.zupan@turaplan.si", "napacno-geslo"),
     ("neobstaja@turaplan.si", PASSWORD),
 ])
 def test_wrong_credentials_give_same_message(client, dispatcher, email, password):
@@ -66,7 +66,7 @@ def test_token_stops_working_after_deactivation(client, dispatcher):
 
 
 def test_only_admin_role_can_use_django_admin(db):
-    admin = User.objects.create_superuser("admin@turaplan.si", PASSWORD)
-    driver = User.objects.create_user("voznik@turaplan.si", PASSWORD, role=User.Role.DRIVER)
+    admin = User.objects.create_superuser("ana.novak@turaplan.si", PASSWORD)
+    driver = User.objects.create_user("vid.krajnc@turaplan.si", PASSWORD, role=User.Role.DRIVER)
     assert admin.role == User.Role.ADMIN and admin.is_staff
     assert not driver.is_staff

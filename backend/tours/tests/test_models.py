@@ -56,5 +56,5 @@ def test_settings_always_has_one_row(db):
 def test_seed_data_can_run_twice(db):
     call_command("seed_data")
     call_command("seed_data")
-    assert Order.objects.count() == 25
+    assert Order.objects.count() == 100
     assert Tour.objects.count() == 4

@@ -31,12 +31,12 @@ def call(view, user=None):
 
 @pytest.fixture
 def dispatcher(db):
-    return User.objects.create_user("disponent@turaplan.si", "x", role=User.Role.DISPATCHER)
+    return User.objects.create_user("dejan.zupan@turaplan.si", "x", role=User.Role.DISPATCHER)
 
 
 @pytest.fixture
 def driver(db):
-    return User.objects.create_user("voznik@turaplan.si", "x", role=User.Role.DRIVER)
+    return User.objects.create_user("vid.krajnc@turaplan.si", "x", role=User.Role.DRIVER)
 
 
 def test_anonymous_user_gets_401(db):

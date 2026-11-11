@@ -34,7 +34,7 @@ def test_first_stop_cannot_move_up(dispatcher_client, draft_tour):
 
 
 def test_order_of_same_customer_goes_after_its_last_stop(dispatcher_client, draft_tour):
-    # N-014 in N-024 sta naročili Pekarne Klas, N-015 je Gostilna Lipa
+    # N-014 in N-024 sta naročili Pekarne Klas, N-015 je Kavarna Drava
     add(dispatcher_client, draft_tour, "N-014")
     add(dispatcher_client, draft_tour, "N-015")
     response = add(dispatcher_client, draft_tour, "N-024")
