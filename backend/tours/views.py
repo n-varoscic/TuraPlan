@@ -11,7 +11,8 @@ from .serializers import (
     OrderSerializer, TourCreateSerializer, TourDetailSerializer, TourListSerializer, VehicleSerializer,
 )
 from .services import (
-    add_stop, available_drivers, available_vehicles, change_vehicle, remove_stop, unassigned_orders,
+    add_stop, available_drivers, available_vehicles, change_vehicle, move_stop, move_stop_to, remove_stop,
+    unassigned_orders, update_customer_delivery_note, update_driver_note,
 )
 
 
@@ -111,11 +112,42 @@ class TourStopsView(APIView):
 
 
 class StopDetailView(APIView):
-    """DELETE /api/stops/{id}/ odstrani postanek iz ture"""
+    """PATCH /api/stops/{id}/ shrani opombo za voznika, DELETE /api/stops/{id}/ odstrani postanek iz ture"""
 
     permission_classes = [IsDispatcher]
+
+    def patch(self, request, pk):
+        stop = get_object_or_404(Stop, pk=pk)
+        update_driver_note(stop, request.data.get("driver_note", ""))
+        return tour_response(stop.tour)
 
     def delete(self, request, pk):
         stop = get_object_or_404(Stop, pk=pk)
         remove_stop(stop)
+        return tour_response(stop.tour)
+
+
+class StopMoveView(APIView):
+    """POST /api/stops/{id}/move/ z {"direction": "up" | "down"} ali {"position": 3} premakne postanek"""
+
+    permission_classes = [IsDispatcher]
+
+    def post(self, request, pk):
+        stop = get_object_or_404(Stop, pk=pk)
+        if "position" in request.data:
+            position = serializers.IntegerField().to_internal_value(request.data["position"])
+            move_stop_to(stop, position)
+        else:
+            move_stop(stop, request.data.get("direction"))
+        return tour_response(stop.tour)
+
+
+class StopDeliveryNoteView(APIView):
+    """POST /api/stops/{id}/delivery-note/ shrani stalno opombo stranke tega postanka"""
+
+    permission_classes = [IsDispatcher]
+
+    def post(self, request, pk):
+        stop = get_object_or_404(Stop, pk=pk)
+        update_customer_delivery_note(stop, request.data.get("delivery_note", ""))
         return tour_response(stop.tour)

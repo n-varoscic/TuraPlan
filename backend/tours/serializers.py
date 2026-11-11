@@ -3,7 +3,7 @@ from rest_framework import serializers
 from users.serializers import UserSerializer
 
 from .models import Order, Stop, Tour, Vehicle
-from .services import delivery_progress, tour_creation_errors, tour_load
+from .services import delivery_progress, split_customers, tour_creation_errors, tour_load
 
 
 class VehicleSerializer(serializers.ModelSerializer):
@@ -16,7 +16,9 @@ class StopSerializer(serializers.ModelSerializer):
     """Postanek s podatki naročila in stranke, ki jih potrebujeta disponent in voznik"""
 
     order_number = serializers.CharField(source="order.number")
+    customer_id = serializers.IntegerField(source="order.customer.id")
     customer = serializers.CharField(source="order.customer.name")
+    delivery_note = serializers.CharField(source="order.customer.delivery_note")
     address = serializers.CharField(source="order.customer.address")
     city = serializers.CharField(source="order.customer.city")
     weight_kg = serializers.DecimalField(source="order.weight_kg", max_digits=8, decimal_places=2)
@@ -25,8 +27,8 @@ class StopSerializer(serializers.ModelSerializer):
     class Meta:
         model = Stop
         fields = [
-            "id", "sequence", "order_number", "customer", "address", "city", "weight_kg", "pallets",
-            "driver_note", "result", "reason", "marked_at",
+            "id", "sequence", "order_number", "customer_id", "customer", "delivery_note", "address", "city",
+            "weight_kg", "pallets", "driver_note", "result", "reason", "marked_at",
         ]
 
 
@@ -55,6 +57,10 @@ class TourDetailSerializer(TourListSerializer):
         fields = TourListSerializer.Meta.fields + [
             "note", "confirmed_at", "started_at", "completed_at", "stops",
         ]
+
+    def to_representation(self, tour):
+        # Stranke z nezaporednimi postanki, pri katerih frontend prikaže opozorilo
+        return {**super().to_representation(tour), "split_customers": split_customers(tour)}
 
 
 class TourCreateSerializer(serializers.ModelSerializer):
