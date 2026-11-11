@@ -7,6 +7,7 @@ import {
 import DriverNoteInput from "../components/DriverNoteInput.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import TourLoad from "../components/TourLoad.jsx";
+import TourMap from "../components/TourMap.jsx";
 import { formatDate, formatNumber, pluralize } from "../format.js";
 import { TOUR_STATUS } from "../labels.js";
 import { groupStops } from "../stopGroups.js";
@@ -148,8 +149,12 @@ export default function TourBuilderPage() {
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="row g-3">
-        <div className="col-lg-5">
-          <div className="card h-100">
+        <div className="col-lg-5 d-flex flex-column gap-3">
+          {/* Zemljevid se izriše iz postankov ture, zato se ob vsaki spremembi vrstnega reda takoj posodobi */}
+          <div className="card p-2">
+            <TourMap warehouse={tour.warehouse} stops={tour.stops} />
+          </div>
+          <div className="card flex-grow-1">
             <div className="card-header d-flex align-items-center gap-2">
               <h2 className="h6 mb-0 flex-grow-1">Nerazporejena naročila</h2>
               <select
@@ -258,6 +263,9 @@ export default function TourBuilderPage() {
                           {stop.address}, {stop.city} · {formatNumber(stop.weight_kg)} kg ·{" "}
                           {formatNumber(stop.pallets)} pal.
                         </div>
+                        {stop.lat === null && (
+                          <div className="small text-warning-emphasis">⚠ Lokacija ni določena</div>
+                        )}
                         {stop.delivery_note && (
                           <div className="small text-info-emphasis mt-1">
                             📌 Stalna opomba: {stop.delivery_note}{" "}

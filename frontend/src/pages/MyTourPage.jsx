@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { completeTour, getTour, markStop, startTour } from "../api/client.js";
 import DeliveryProgress from "../components/DeliveryProgress.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
+import TourMap from "../components/TourMap.jsx";
 import { formatDate, formatDateTime, formatNumber, pluralize } from "../format.js";
 import { STOP_RESULT, TOUR_STATUS } from "../labels.js";
 import { groupStops } from "../stopGroups.js";
@@ -68,6 +69,10 @@ export default function MyTourPage() {
       )}
 
       {error && <div className="alert alert-danger">{error}</div>}
+
+      <div className="card p-2 mb-3">
+        <TourMap warehouse={tour.warehouse} stops={tour.stops} />
+      </div>
 
       <div className="d-flex flex-column gap-2">
         {groupStops(tour.stops).map((group) => (

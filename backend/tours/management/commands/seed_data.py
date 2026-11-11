@@ -7,6 +7,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from tours.models import Customer, Order, Settings, Stop, Tour, Vehicle
+from tours.services import customer_address
 from users.models import User
 
 # Geslo vseh testnih uporabnikov (samo za lokalni razvoj)
@@ -366,10 +367,14 @@ class Command(BaseCommand):
 
         customers = {}
         for code, name, address, postal, city, region, lat, lng, contact, phone, note in CUSTOMERS:
-            customers[code] = Customer.objects.create(
+            customer = Customer(
                 code=code, name=name, address=address, postal_code=postal, city=city, region=region,
                 lat=Decimal(lat), lng=Decimal(lng), contact_name=contact, phone=phone, delivery_note=note,
             )
+            # Koordinate veljajo za ta naslov, zato jih ob dodajanju v turo ni treba iskati
+            customer.geocoded_address = customer_address(customer)
+            customer.save()
+            customers[code] = customer
 
         orders = {}
         for number, code, received, deadline, weight, pallets, description in ORDERS:
