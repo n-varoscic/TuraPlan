@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 import {
-  addStop, changeVehicle, getOrders, getTour, getTourOptions, moveStop, moveStopTo, removeStop,
+  addStop, changeVehicle, confirmTour, getOrders, getTour, getTourOptions, moveStop, moveStopTo, removeStop,
   updateDeliveryNote, updateDriverNote,
 } from "../api/client.js";
 import DriverNoteInput from "../components/DriverNoteInput.jsx";
@@ -78,6 +78,8 @@ export default function TourBuilderPage() {
   }
 
   if (!tour) return error ? <div className="alert alert-danger">{error}</div> : <p className="text-muted">Nalagam …</p>;
+  // Potrjena tura je zaklenjena, zato namesto urejanja prikažemo njene podrobnosti
+  if (tour.status !== "DRAFT") return <Navigate to={`/tours/${tour.id}`} replace />;
 
   const regions = [...new Set(orders.map((order) => order.region))].sort();
   const shownOrders = region ? orders.filter((order) => order.region === region) : orders;
@@ -104,8 +106,20 @@ export default function TourBuilderPage() {
         <StatusBadge {...TOUR_STATUS[tour.status]} />
         {/* Spremembe se shranjujejo ob vsakem kliku, zato gumb samo zapre urejanje */}
         <span className="small text-muted ms-auto">Spremembe se shranjujejo sproti</span>
-        <Link to={`/tours/${tour.id}`} className="btn btn-sm btn-primary">Končaj urejanje</Link>
+        <Link to={`/tours/${tour.id}`} className="btn btn-sm btn-outline-primary">Končaj urejanje</Link>
+        <button
+          className="btn btn-sm btn-primary"
+          onClick={() => update(() => confirmTour(tour.id))}
+          disabled={tour.confirmation_errors.length > 0}
+        >
+          Potrdi turo
+        </button>
       </div>
+      {tour.confirmation_errors.length > 0 && (
+        <div className="small text-muted text-end mb-1">
+          Potrditev ni mogoča: {tour.confirmation_errors.join(" · ")}
+        </div>
+      )}
       <p className="text-muted mb-3">
         {formatDate(tour.dispatch_date)} · {tour.driver.first_name} {tour.driver.last_name}
       </p>
