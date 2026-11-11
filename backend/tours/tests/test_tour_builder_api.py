@@ -76,6 +76,14 @@ def test_order_after_deadline_is_marked_late(dispatcher_client, tomorrow):
     assert orders["N-025"]["is_late"] is False
 
 
+def test_unassigned_order_has_customer_location_for_map(dispatcher_client, tomorrow):
+    orders = {o["number"]: o for o in dispatcher_client.get(f"/api/orders/?date={tomorrow}").data}
+    customer = order("N-014").customer
+    assert orders["N-014"]["customer_id"] == customer.id
+    assert orders["N-014"]["lat"] == float(customer.lat)
+    assert orders["N-014"]["lng"] == float(customer.lng)
+
+
 def test_added_order_becomes_planned_and_gets_next_sequence(dispatcher_client, draft_tour):
     dispatcher_client.post(f"/api/tours/{draft_tour.id}/stops/", {"order": order("N-014").id})
     response = dispatcher_client.post(f"/api/tours/{draft_tour.id}/stops/", {"order": order("N-015").id})
