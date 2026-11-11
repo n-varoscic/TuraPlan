@@ -3,7 +3,9 @@ from rest_framework import serializers
 from users.serializers import UserSerializer
 
 from .models import Order, Stop, Tour, Vehicle
-from .services import delivery_progress, split_customers, tour_creation_errors, tour_load
+from .services import (
+    confirmation_errors, delivery_progress, split_customers, tour_creation_errors, tour_load,
+)
 
 
 class VehicleSerializer(serializers.ModelSerializer):
@@ -59,8 +61,12 @@ class TourDetailSerializer(TourListSerializer):
         ]
 
     def to_representation(self, tour):
-        # Stranke z nezaporednimi postanki, pri katerih frontend prikaže opozorilo
-        return {**super().to_representation(tour), "split_customers": split_customers(tour)}
+        # Stranke z nezaporednimi postanki in razlogi, zakaj ture še ni mogoče potrditi
+        return {
+            **super().to_representation(tour),
+            "split_customers": split_customers(tour),
+            "confirmation_errors": confirmation_errors(tour),
+        }
 
 
 class TourCreateSerializer(serializers.ModelSerializer):
