@@ -311,13 +311,14 @@ TOURS = [
         ("N-044", Stop.Result.PENDING, ""),
     ]),
     # Dolenjska, kombi, prvi dve naročili sta od iste stranke
+    # Vrstni red je namenoma neroden, da ga predlog vrstnega reda izboljša
     (1, "MB AB-123", DRIVER_VID_EMAIL, Tour.Status.DRAFT, [
         ("N-011", Stop.Result.PENDING, ""),
         ("N-012", Stop.Result.PENDING, ""),
-        ("N-029", Stop.Result.PENDING, ""),
-        ("N-030", Stop.Result.PENDING, ""),
         ("N-031", Stop.Result.PENDING, ""),
+        ("N-029", Stop.Result.PENDING, ""),
         ("N-032", Stop.Result.PENDING, ""),
+        ("N-030", Stop.Result.PENDING, ""),
     ]),
 ]
 

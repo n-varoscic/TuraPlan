@@ -127,6 +127,16 @@ export function moveStop(stopId, direction) {
   return apiRequest(`/stops/${stopId}/move/`, { method: "POST", body: { direction } });
 }
 
+// Predlog vrstnega reda postankov z zračno razdaljo, v bazo se nič ne shrani
+export function getSuggestedOrder(tourId) {
+  return apiRequest(`/tours/${tourId}/suggested-order/`);
+}
+
+// Shrani predlagani vrstni red in vrne posodobljeno turo
+export function applySuggestedOrder(tourId) {
+  return apiRequest(`/tours/${tourId}/suggested-order/`, { method: "POST" });
+}
+
 // Potrditev ture, ob neizpolnjenih pogojih API vrne vse razloge
 export function confirmTour(tourId) {
   return apiRequest(`/tours/${tourId}/confirm/`, { method: "POST" });

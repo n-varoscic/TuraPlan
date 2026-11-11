@@ -9,12 +9,14 @@ from users.serializers import UserSerializer
 
 from .models import Order, Stop, Tour, Vehicle
 from .serializers import (
-    OrderSerializer, TourCreateSerializer, TourDetailSerializer, TourListSerializer, VehicleSerializer,
+    OrderSerializer, StopSerializer, TourCreateSerializer, TourDetailSerializer, TourListSerializer,
+    VehicleSerializer,
 )
 from .services import (
-    add_stop, available_drivers, available_vehicles, change_vehicle, complete_tour, confirm_tour,
-    driver_tours, mark_stop, move_stop, move_stop_to, remove_stop, start_tour, unassigned_orders,
-    unconfirm_tour, update_customer_delivery_note, update_driver_note,
+    add_stop, apply_suggested_order, available_drivers, available_vehicles, change_vehicle,
+    complete_tour, confirm_tour, driver_tours, mark_stop, move_stop, move_stop_to, remove_stop,
+    start_tour, suggested_order_preview, unassigned_orders, unconfirm_tour,
+    update_customer_delivery_note, update_driver_note,
 )
 
 
@@ -164,6 +166,22 @@ class StopDeliveryNoteView(APIView):
         stop = get_object_or_404(Stop, pk=pk)
         update_customer_delivery_note(stop, request.data.get("delivery_note", ""))
         return tour_response(stop.tour)
+
+
+class TourSuggestedOrderView(APIView):
+    """GET /api/tours/{id}/suggested-order/ vrne predlog vrstnega reda z razdaljo, POST ga shrani"""
+
+    permission_classes = [IsDispatcher]
+
+    def get(self, request, pk):
+        tour = get_object_or_404(Tour, pk=pk)
+        preview = suggested_order_preview(tour)
+        return Response({**preview, "stops": StopSerializer(preview["stops"], many=True).data})
+
+    def post(self, request, pk):
+        tour = get_object_or_404(Tour, pk=pk)
+        apply_suggested_order(tour)
+        return tour_response(tour)
 
 
 class TourConfirmView(APIView):
