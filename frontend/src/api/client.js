@@ -120,3 +120,22 @@ export function addStop(tourId, orderId) {
 export function removeStop(stopId) {
   return apiRequest(`/stops/${stopId}/`, { method: "DELETE" });
 }
+
+// Premik postanka za eno mesto, direction je "up" ali "down"
+export function moveStop(stopId, direction) {
+  return apiRequest(`/stops/${stopId}/move/`, { method: "POST", body: { direction } });
+}
+
+// Premik postanka na poljubno mesto, npr. ob vlečenju z miško
+export function moveStopTo(stopId, position) {
+  return apiRequest(`/stops/${stopId}/move/`, { method: "POST", body: { position } });
+}
+
+// Stalna opomba stranke postanka, prazna opomba jo odstrani
+export function updateDeliveryNote(stopId, deliveryNote) {
+  return apiRequest(`/stops/${stopId}/delivery-note/`, { method: "POST", body: { delivery_note: deliveryNote } });
+}
+
+export function updateDriverNote(stopId, driverNote) {
+  return apiRequest(`/stops/${stopId}/`, { method: "PATCH", body: { driver_note: driverNote } });
+}

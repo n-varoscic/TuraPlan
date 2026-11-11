@@ -69,6 +69,7 @@ export default function TourDetailPage() {
                   <td>{stop.order_number}</td>
                   <td>
                     {stop.customer}
+                    {stop.delivery_note && <div className="small text-info-emphasis">📌 {stop.delivery_note}</div>}
                     {stop.driver_note && <div className="small text-muted">{stop.driver_note}</div>}
                   </td>
                   <td>{stop.address}, {stop.city}</td>
