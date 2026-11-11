@@ -1,7 +1,7 @@
 from django.urls import path
 
 from .views import (
-    MyTourListView, OrderListView, StopDeliveryNoteView, StopDetailView, StopMoveView,
+    MyTourListView, OrderListView, OrderSearchView, StopDeliveryNoteView, StopDetailView, StopMoveView,
     StopResultView, TourCompleteView, TourConfirmView, TourDetailView, TourListView,
     TourOptionsView, TourRouteView, TourStartView, TourStopsView, TourSuggestedOrderView,
     TourUnconfirmView,
@@ -24,4 +24,5 @@ urlpatterns = [
     path("stops/<int:pk>/result/", StopResultView.as_view(), name="stop-result"),
     path("stops/<int:pk>/delivery-note/", StopDeliveryNoteView.as_view(), name="stop-delivery-note"),
     path("orders/", OrderListView.as_view(), name="order-list"),
+    path("orders/search/", OrderSearchView.as_view(), name="order-search"),
 ]

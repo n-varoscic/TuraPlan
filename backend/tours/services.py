@@ -7,7 +7,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Q
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
@@ -20,6 +20,9 @@ UNASSIGNED_STATUSES = [Order.Status.NEW, Order.Status.NOT_DELIVERED]
 
 # Opomba za voznika in stalna opomba stranke imata največ 300 znakov
 DRIVER_NOTE_MAX_LENGTH = 300
+
+# Najmanj toliko znakov je potrebnih za iskanje po nazivu stranke
+SEARCH_MIN_LENGTH = 3
 
 # Brezplačna storitev OpenStreetMap, ki iz naslova vrne koordinate
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
@@ -105,6 +108,40 @@ def unassigned_orders(date=None, region=None):
     if region:
         orders = orders.filter(customer__region=region)
     return orders.order_by("dispatch_deadline", "number")
+
+
+def search_orders(query):
+    """Naročila s točno to številko ali z nazivom stranke, ki vsebuje iskano besedilo (vsaj 3 znaki)"""
+    query = query.strip()
+    if not query:
+        return Order.objects.none()
+    # Velike in male črke pri iskanju niso pomembne
+    matches = Q(number__iexact=query)
+    if len(query) >= SEARCH_MIN_LENGTH:
+        matches |= Q(customer__name__icontains=query)
+    orders = Order.objects.filter(matches).select_related("customer")
+    return orders.prefetch_related("stops__tour__driver").order_by("dispatch_deadline", "number")
+
+
+def last_stop(order):
+    """Zadnji postanek naročila; nedostavljeno naročilo ima lahko postanke v več turah"""
+    return max(order.stops.all(), key=lambda stop: (stop.tour.dispatch_date, stop.id), default=None)
+
+
+def order_tour(order):
+    """Tura, v kateri je naročilo planirano ali je bilo dostavljeno, sicer None"""
+    stop = last_stop(order)
+    if stop is None or order.status not in (Order.Status.PLANNED, Order.Status.DELIVERED):
+        return None
+    return stop.tour
+
+
+def not_delivered_reason(order):
+    """Razlog zadnje nedostave, če naročilo še čaka na ponovno planiranje"""
+    stop = last_stop(order)
+    if stop is None or order.status != Order.Status.NOT_DELIVERED:
+        return ""
+    return stop.reason
 
 
 def customer_address(customer):
