@@ -15,7 +15,7 @@ from .serializers import (
 from .services import (
     add_stop, apply_suggested_order, available_drivers, available_vehicles, change_vehicle,
     complete_tour, confirm_tour, driver_tours, mark_stop, move_stop, move_stop_to, remove_stop,
-    start_tour, suggested_order_preview, unassigned_orders, unconfirm_tour,
+    road_route, start_tour, suggested_order_preview, unassigned_orders, unconfirm_tour,
     update_customer_delivery_note, update_driver_note,
 )
 
@@ -169,7 +169,7 @@ class StopDeliveryNoteView(APIView):
 
 
 class TourSuggestedOrderView(APIView):
-    """GET /api/tours/{id}/suggested-order/ vrne predlog vrstnega reda z razdaljo, POST ga shrani"""
+    """GET /api/tours/{id}/suggested-order/ vrne predlog vrstnega reda z razdaljo, POST shrani prikazani predlog"""
 
     permission_classes = [IsDispatcher]
 
@@ -180,8 +180,18 @@ class TourSuggestedOrderView(APIView):
 
     def post(self, request, pk):
         tour = get_object_or_404(Tour, pk=pk)
-        apply_suggested_order(tour)
+        apply_suggested_order(tour, request.data.get("stop_ids", []))
         return tour_response(tour)
+
+
+class TourRouteView(APIView):
+    """GET /api/tours/{id}/route/ vrne pot ture po cestah ali road = null, če OSRM ni dosegljiv"""
+
+    permission_classes = [IsDispatcher]
+
+    def get(self, request, pk):
+        tour = get_object_or_404(tours_with_details(), pk=pk)
+        return Response({"road": road_route(tour.stops.all())})
 
 
 class TourConfirmView(APIView):
