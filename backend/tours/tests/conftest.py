@@ -5,6 +5,7 @@ from django.core.management import call_command
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from tours.management.commands.seed_data import DISPATCHER_EMAIL, DRIVER_MAJA_EMAIL, DRIVER_VID_EMAIL
 from tours.models import Tour, Vehicle
 from users.models import User
 
@@ -23,12 +24,12 @@ def client_for(email):
 
 @pytest.fixture
 def dispatcher_client(seeded):
-    return client_for("disponent@turaplan.si")
+    return client_for(DISPATCHER_EMAIL)
 
 
 @pytest.fixture
 def driver_client(seeded):
-    return client_for("voznik@turaplan.si")
+    return client_for(DRIVER_VID_EMAIL)
 
 
 @pytest.fixture
@@ -42,7 +43,7 @@ def draft_tour(dispatcher_client, tomorrow):
     response = dispatcher_client.post("/api/tours/", {
         "dispatch_date": tomorrow,
         "vehicle": Vehicle.objects.get(registration_number="MB CD-456").id,
-        "driver": User.objects.get(email="voznik2@turaplan.si").id,
+        "driver": User.objects.get(email=DRIVER_MAJA_EMAIL).id,
     })
     assert response.status_code == 201
     return Tour.objects.get(pk=response.data["id"])

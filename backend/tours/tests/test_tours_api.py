@@ -46,13 +46,13 @@ def test_tour_list_contains_load_and_delivery_progress(dispatcher_client):
     assert tour["vehicle"]["max_load_kg"] == 1200
     assert tour["total_weight_kg"] == 1100
     assert tour["total_pallets"] == 3.75
-    assert (tour["stop_count"], tour["delivered_count"], tour["not_delivered_count"]) == (4, 2, 1)
+    assert (tour["stop_count"], tour["delivered_count"], tour["not_delivered_count"]) == (7, 2, 1)
 
 
 def test_tour_detail_contains_stops_with_result_and_reason(dispatcher_client):
     response = dispatcher_client.get(f"/api/tours/{today_tour().id}/")
     stops = response.data["stops"]
-    assert [stop["sequence"] for stop in stops] == [1, 2, 3, 4]
+    assert [stop["sequence"] for stop in stops] == [1, 2, 3, 4, 5, 6, 7]
     assert stops[2]["result"] == "NOT_DELIVERED"
     assert stops[2]["reason"] == "Ni bilo nikogar"
     assert stops[2]["marked_at"] is not None

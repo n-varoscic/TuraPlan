@@ -4,6 +4,7 @@ from decimal import Decimal
 import pytest
 from django.utils import timezone
 
+from tours.management.commands.seed_data import DISPATCHER_EMAIL, DRIVER_MAJA_EMAIL
 from tours.models import Customer, Order, Tour, Vehicle
 from tours.services import add_stop
 from users.models import User
@@ -20,8 +21,8 @@ def draft_tour(dispatcher_client, tomorrow):
     return Tour.objects.create(
         dispatch_date=tomorrow,
         vehicle=Vehicle.objects.get(registration_number="MB CD-456"),
-        driver=User.objects.get(email="voznik2@turaplan.si"),
-        created_by=User.objects.get(email="disponent@turaplan.si"),
+        driver=User.objects.get(email=DRIVER_MAJA_EMAIL),
+        created_by=User.objects.get(email=DISPATCHER_EMAIL),
     )
 
 

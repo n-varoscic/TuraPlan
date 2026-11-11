@@ -2,6 +2,9 @@ from datetime import timedelta
 
 from django.utils import timezone
 
+from tours.management.commands.seed_data import (
+    DISPATCHER_EMAIL, DRIVER_LUKA_EMAIL, DRIVER_MAJA_EMAIL, DRIVER_VID_EMAIL,
+)
 from tours.models import Order, Stop, Tour, Vehicle
 from users.models import User
 
@@ -12,20 +15,26 @@ def order(number):
 
 def test_new_tour_is_draft_and_created_by_dispatcher(draft_tour):
     assert draft_tour.status == Tour.Status.DRAFT
-    assert draft_tour.created_by.email == "disponent@turaplan.si"
+    assert draft_tour.created_by.email == DISPATCHER_EMAIL
 
 
 def test_options_show_only_free_vehicles_and_drivers(dispatcher_client, tomorrow):
     data = dispatcher_client.get(f"/api/tours/options/?date={tomorrow}").data
-    assert [v["registration_number"] for v in data["vehicles"]] == ["MB CD-456"]
-    assert [d["email"] for d in data["drivers"]] == ["voznik2@turaplan.si"]
+    vehicles = {v["registration_number"] for v in data["vehicles"]}
+    drivers = {d["email"] for d in data["drivers"]}
+    # MB AB-123 in MB TR-789 imata jutri že turo, MB PR-632 ni aktivno
+    assert "MB CD-456" in vehicles
+    assert not vehicles & {"MB AB-123", "MB TR-789", "MB PR-632"}
+    # Vid in Luka imata jutri že turo
+    assert DRIVER_MAJA_EMAIL in drivers
+    assert not drivers & {DRIVER_VID_EMAIL, DRIVER_LUKA_EMAIL}
 
 
 def test_tour_cannot_use_vehicle_that_already_has_tour(dispatcher_client, tomorrow):
     response = dispatcher_client.post("/api/tours/", {
         "dispatch_date": tomorrow,
         "vehicle": Vehicle.objects.get(registration_number="MB TR-789").id,
-        "driver": User.objects.get(email="voznik2@turaplan.si").id,
+        "driver": User.objects.get(email=DRIVER_MAJA_EMAIL).id,
     })
     assert response.status_code == 400
     assert "Vozilo ni aktivno ali ima na ta datum že turo" in response.data["non_field_errors"]
@@ -37,7 +46,7 @@ def test_tour_cannot_use_inactive_vehicle(dispatcher_client, tomorrow):
     vehicle.save()
     response = dispatcher_client.post("/api/tours/", {
         "dispatch_date": tomorrow, "vehicle": vehicle.id,
-        "driver": User.objects.get(email="voznik2@turaplan.si").id,
+        "driver": User.objects.get(email=DRIVER_MAJA_EMAIL).id,
     })
     assert response.status_code == 400
 
