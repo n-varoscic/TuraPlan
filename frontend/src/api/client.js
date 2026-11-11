@@ -113,6 +113,11 @@ export function getOrders(date) {
   return apiRequest(`/orders/?date=${date}`);
 }
 
+// Iskanje naročil po številki naročila ali nazivu stranke
+export function searchOrders(query) {
+  return apiRequest(`/orders/search/?q=${encodeURIComponent(query)}`);
+}
+
 // Dodajanje in odstranjevanje postanka vrneta posodobljeno turo
 export function addStop(tourId, orderId) {
   return apiRequest(`/tours/${tourId}/stops/`, { method: "POST", body: { order: orderId } });

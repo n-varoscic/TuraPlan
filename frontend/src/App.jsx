@@ -8,6 +8,7 @@ import MyTourPage from "./pages/MyTourPage.jsx";
 import MyToursPage from "./pages/MyToursPage.jsx";
 import NewTourPage from "./pages/NewTourPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
+import OrderSearchPage from "./pages/OrderSearchPage.jsx";
 import TourBuilderPage from "./pages/TourBuilderPage.jsx";
 import TourDetailPage from "./pages/TourDetailPage.jsx";
 import ToursPage from "./pages/ToursPage.jsx";
@@ -34,6 +35,10 @@ export default function App() {
         <Route
           path="/tours/:id"
           element={<ProtectedRoute role={ROLES.DISPATCHER}><TourDetailPage /></ProtectedRoute>}
+        />
+        <Route
+          path="/orders/search"
+          element={<ProtectedRoute role={ROLES.DISPATCHER}><OrderSearchPage /></ProtectedRoute>}
         />
         <Route
           path="/my-tours"

@@ -11,3 +11,10 @@ export const STOP_RESULT = {
   DELIVERED: { label: "Dostavljeno", color: "success" },
   NOT_DELIVERED: { label: "Ni dostavljeno", color: "danger" },
 };
+
+export const ORDER_STATUS = {
+  NEW: { label: "Novo", color: "secondary" },
+  PLANNED: { label: "Planirano", color: "info" },
+  DELIVERED: { label: "Dostavljeno", color: "success" },
+  NOT_DELIVERED: { label: "Nedostavljeno", color: "danger" },
+};
