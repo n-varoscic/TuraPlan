@@ -9,7 +9,7 @@ export default function Layout() {
   return (
     <>
       <nav className="navbar tp-navbar">
-        <div className="container">
+        <div className="container-fluid px-lg-4">
           <Link className="navbar-brand" to="/">
             TuraPlan
           </Link>
@@ -25,7 +25,8 @@ export default function Layout() {
           )}
         </div>
       </nav>
-      <main className="container py-4">
+      {/* Vsebina seže čez celo širino okna, ob robu ostane le ozek odmik */}
+      <main className="container-fluid px-lg-4 py-4">
         {/* Outlet je mesto, kamor React Router vstavi trenutno stran */}
         <Outlet />
       </main>
