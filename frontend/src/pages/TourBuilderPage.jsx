@@ -8,7 +8,7 @@ import DriverNoteInput from "../components/DriverNoteInput.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import TourLoad from "../components/TourLoad.jsx";
 import TourMap from "../components/TourMap.jsx";
-import { formatDate, formatNumber, pluralize } from "../format.js";
+import { addDays, formatDate, formatNumber, pluralize } from "../format.js";
 import { TOUR_STATUS } from "../labels.js";
 import { groupStops } from "../stopGroups.js";
 
@@ -24,6 +24,10 @@ export default function TourBuilderPage() {
   // Postanek, ki ga je mogoče vleči; ob kliku v polje ali gumb ga izklopimo, da označevanje besedila deluje
   const [draggableId, setDraggableId] = useState(null);
   const [region, setRegion] = useState("");
+  // Koliko dni po datumu ture je lahko rok odpreme prikazanih naročil; prazno pomeni vse roke
+  const [deadlineDays, setDeadlineDays] = useState("0");
+  // Povečan zemljevid dobi večino širine in višino okna, seznama naročil in postankov sta ob njem
+  const [mapLarge, setMapLarge] = useState(false);
   // Predlog vrstnega reda, ki ga disponent še ni sprejel ali zavrgel
   const [suggestion, setSuggestion] = useState(null);
   const [error, setError] = useState("");
@@ -32,6 +36,8 @@ export default function TourBuilderPage() {
     getTour(id)
       .then(async (data) => {
         setTour(data);
+        // Tura z že dodanimi postanki pokaže naročila iste regije, disponent jo lahko zamenja
+        if (data.stops.length > 0) setRegion(data.stops[0].region);
         setOrders(await getOrders(data.dispatch_date));
         setFreeVehicles((await getTourOptions(data.dispatch_date)).vehicles);
       })
@@ -45,6 +51,8 @@ export default function TourBuilderPage() {
     setSuggestion(null);
     try {
       const updated = await action();
+      // Prvi postanek določi regijo ture, zato filter regije nastavimo nanjo
+      if (tour.stops.length === 0 && updated.stops.length > 0) setRegion(updated.stops[0].region);
       setTour(updated);
       setOrders(await getOrders(updated.dispatch_date));
     } catch (err) {
@@ -98,7 +106,12 @@ export default function TourBuilderPage() {
   if (tour.status !== "DRAFT") return <Navigate to={`/tours/${tour.id}`} replace />;
 
   const regions = [...new Set(orders.map((order) => order.region))].sort();
-  const shownOrders = region ? orders.filter((order) => order.region === region) : orders;
+  // Zadnji rok odpreme, ki ga filter še prikaže; seznam in zemljevid kažeta ista naročila
+  const lastDeadline = deadlineDays === "" ? null : addDays(tour.dispatch_date, Number(deadlineDays));
+  const shownOrders = orders.filter(
+    (order) =>
+      (!region || order.region === region) && (!lastDeadline || order.dispatch_deadline <= lastDeadline),
+  );
   const groups = groupStops(tour.stops);
   const lastSequence = tour.stops.length;
 
@@ -106,6 +119,244 @@ export default function TourBuilderPage() {
   const otherVehicles = freeVehicles.filter((vehicle) => vehicle.id !== tour.vehicle.id);
   const vehicles = [tour.vehicle, ...otherVehicles].sort((a, b) =>
     a.registration_number.localeCompare(b.registration_number),
+  );
+
+  // Zemljevid se izriše iz postankov ture, zato se ob vsaki spremembi vrstnega reda takoj posodobi
+  const mapCard = (
+    <div className={mapLarge ? "card p-2 sticky-lg-top" : "card p-2"}>
+      <TourMap
+        warehouse={tour.warehouse}
+        stops={suggestion ? suggestion.stops : tour.stops}
+        orders={shownOrders}
+        onAddOrder={(order) => update(() => addStop(tour.id, order.id))}
+        // Med predogledom predloga postankov ne odstranjujemo, ker zemljevid kaže predlagani vrstni red
+        onRemoveStop={suggestion ? undefined : (stop) => update(() => removeStop(stop.id))}
+        large={mapLarge}
+      />
+      <div className="d-flex flex-wrap align-items-center gap-3 small text-muted mt-2 px-1">
+        <span><span className="tp-map-legend" /> postanek ture</span>
+        <span><span className="tp-map-legend tp-map-order" /> nerazporejeno</span>
+        <span><span className="tp-map-legend tp-map-order tp-map-late" /> po roku odpreme</span>
+        <button className="btn btn-sm btn-outline-primary ms-auto" onClick={() => setMapLarge(!mapLarge)}>
+          {mapLarge ? "Pomanjšaj zemljevid" : "Povečaj zemljevid"}
+        </button>
+      </div>
+    </div>
+  );
+
+  // Kartici sta spremenljivki, ker ju glede na velikost zemljevida postavimo na drugo mesto
+  const ordersCard = (
+    <div className="card flex-grow-1">
+      <div className="card-header d-flex flex-wrap align-items-center gap-2">
+        <h2 className="h6 mb-0 flex-grow-1">Nerazporejena naročila</h2>
+        <select
+          className="form-select form-select-sm w-auto"
+          value={region}
+          onChange={(e) => setRegion(e.target.value)}
+          aria-label="Regija"
+        >
+          <option value="">Vse regije</option>
+          {regions.map((name) => <option key={name} value={name}>{name}</option>)}
+        </select>
+        <select
+          className="form-select form-select-sm w-auto"
+          value={deadlineDays}
+          onChange={(e) => setDeadlineDays(e.target.value)}
+          aria-label="Rok odpreme"
+        >
+          <option value="0">Rok do datuma ture</option>
+          <option value="3">Rok do 3 dni po turi</option>
+          <option value="">Vsi roki</option>
+        </select>
+      </div>
+      <ul className="list-group list-group-flush tp-scroll-list">
+        {shownOrders.length === 0 && <li className="list-group-item text-muted">Ni naročil.</li>}
+        {shownOrders.map((order) => (
+          <li key={order.id} className="list-group-item d-flex align-items-center gap-2">
+            <div className="flex-grow-1">
+              <div>
+                {order.customer} <span className="small text-muted">· {order.number}</span>
+              </div>
+              <div className="small text-muted">
+                {order.city} · {formatNumber(order.weight_kg)} kg · {formatNumber(order.pallets)} pal. ·
+                rok {formatDate(order.dispatch_deadline)}
+              </div>
+              {order.status === "NOT_DELIVERED" && (
+                <span className="badge bg-danger-subtle text-danger-emphasis mt-1">ponovna dostava</span>
+              )}
+            </div>
+            {order.is_late && (
+              <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
+                ⚠ po roku odpreme
+              </span>
+            )}
+            <button
+              className="btn btn-sm btn-outline-primary"
+              onClick={() => update(() => addStop(tour.id, order.id))}
+              aria-label={`Dodaj ${order.number} v turo`}
+            >
+              +
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+
+  const stopsCard = (
+    <div className={mapLarge ? "card" : "card h-100"}>
+      <div className="card-header d-flex align-items-center gap-2">
+        <h2 className="h6 mb-0 flex-grow-1">
+          Postanki ({tour.stops.length}){" "}
+          <span className="small text-muted fw-normal">· {formatNumber(tour.distance_km)} km zračne razdalje</span>
+        </h2>
+        <button
+          className="btn btn-sm btn-outline-primary"
+          onClick={suggestOrder}
+          disabled={tour.stops.length < 2 || suggestion !== null}
+        >
+          Predlagaj vrstni red
+        </button>
+      </div>
+      {suggestion && (
+        <div className="alert alert-info small rounded-0 border-0 border-bottom mb-0">
+          <div className="fw-medium mb-1">
+            Predlagani vrstni red: {formatNumber(suggestion.distance_km)} km zračne razdalje (trenutno{" "}
+            {formatNumber(suggestion.current_distance_km)} km)
+          </div>
+          <ol className="mb-2 ps-3">
+            {suggestion.stops.map((stop) => (
+              <li key={stop.id}>
+                {stop.customer}, {stop.city} <span className="text-muted">· {stop.order_number}</span>
+                {stop.lat === null && <span className="text-warning-emphasis"> · lokacija ni določena</span>}
+              </li>
+            ))}
+          </ol>
+          <div className="d-flex gap-2">
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={() => update(() => applySuggestedOrder(tour.id))}
+            >
+              Sprejmi predlog
+            </button>
+            <button className="btn btn-sm btn-outline-secondary" onClick={() => setSuggestion(null)}>
+              Zavrzi
+            </button>
+            <span className="text-muted align-self-center">Zemljevid kaže predlagani vrstni red.</span>
+          </div>
+        </div>
+      )}
+      {tour.split_customers.length > 0 && (
+        <div className="alert alert-warning small rounded-0 border-0 border-bottom mb-0 py-2">
+          ⚠ Postanki iste stranke niso zaporedni: {tour.split_customers.join(", ")}
+        </div>
+      )}
+      <ul className="list-group list-group-flush tp-scroll-list">
+        {tour.stops.length === 0 && (
+          <li className="list-group-item text-muted">Dodaj naročila s seznama na levi.</li>
+        )}
+        {groups.map((group) => {
+          const grouped = group.stops.length > 1;
+          return [
+            grouped && (
+              <li key={`group-${group.stops[0].id}`} className="list-group-item tp-customer-group py-1 small">
+                {group.customer} – {pluralize(group.stops.length, ["naročilo", "naročili", "naročila", "naročil"])}
+              </li>
+            ),
+            ...group.stops.map((stop) => (
+              <li
+                key={stop.id}
+                className={[
+                  "list-group-item d-flex align-items-start gap-2 tp-draggable",
+                  grouped && "tp-customer-group",
+                  dragged?.id === stop.id && "tp-dragging",
+                  dropClass(stop),
+                ].filter(Boolean).join(" ")}
+                draggable={draggableId === stop.id}
+                onMouseDown={(e) => {
+                  setDraggableId(e.target.closest("input, button") ? null : stop.id);
+                }}
+                onDragStart={(e) => {
+                  e.dataTransfer.effectAllowed = "move";
+                  setDragged(stop);
+                }}
+                onDragEnd={endDrag}
+                onDragOver={(e) => {
+                  if (!dragged) return;
+                  e.preventDefault();
+                  setDropSequence(stop.sequence);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  dropOn(stop.sequence);
+                }}
+              >
+                <span className="tp-drag-handle mt-1" title="Povleci na novo mesto" aria-hidden="true">
+                  ⠿
+                </span>
+                <span className="tp-sequence mt-1">{stop.sequence}</span>
+                <div className="flex-grow-1">
+                  <div>
+                    {stop.customer} <span className="small text-muted">· {stop.order_number}</span>
+                  </div>
+                  <div className="small text-muted">
+                    {stop.address}, {stop.city} · {formatNumber(stop.weight_kg)} kg ·{" "}
+                    {formatNumber(stop.pallets)} pal.
+                  </div>
+                  {stop.lat === null && (
+                    <div className="small text-warning-emphasis">⚠ Lokacija ni določena</div>
+                  )}
+                  {stop.delivery_note && (
+                    <div className="small text-info-emphasis mt-1">
+                      📌 Stalna opomba: {stop.delivery_note}{" "}
+                      <button
+                        type="button"
+                        className="btn btn-link btn-sm p-0 small align-baseline"
+                        onClick={() => update(() => updateDeliveryNote(stop.id, ""))}
+                      >
+                        odstrani
+                      </button>
+                    </div>
+                  )}
+                  <DriverNoteInput
+                    // Ob spremembi shranjenih opomb se polje ponastavi na shranjeno opombo za voznika
+                    key={`${stop.id}-${stop.driver_note}-${stop.delivery_note}`}
+                    stop={stop}
+                    onSave={(note) => update(() => updateDriverNote(stop.id, note))}
+                    onSaveAsDeliveryNote={(note) => update(() => updateDeliveryNote(stop.id, note))}
+                  />
+                </div>
+                <div className="d-flex gap-1">
+                  <button
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={() => update(() => moveStop(stop.id, "up"))}
+                    disabled={stop.sequence === 1}
+                    aria-label={`Premakni ${stop.order_number} gor`}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={() => update(() => moveStop(stop.id, "down"))}
+                    disabled={stop.sequence === lastSequence}
+                    aria-label={`Premakni ${stop.order_number} dol`}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    className="btn btn-sm btn-outline-danger"
+                    onClick={() => update(() => removeStop(stop.id))}
+                    aria-label={`Odstrani ${stop.order_number} iz ture`}
+                  >
+                    ×
+                  </button>
+                </div>
+              </li>
+            )),
+          ];
+        })}
+      </ul>
+    </div>
   );
 
   return (
@@ -163,212 +414,13 @@ export default function TourBuilderPage() {
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="row g-3">
-        <div className="col-lg-5 d-flex flex-column gap-3">
-          {/* Zemljevid se izriše iz postankov ture, zato se ob vsaki spremembi vrstnega reda takoj posodobi */}
-          <div className="card p-2">
-            <TourMap warehouse={tour.warehouse} stops={suggestion ? suggestion.stops : tour.stops} />
-          </div>
-          <div className="card flex-grow-1">
-            <div className="card-header d-flex align-items-center gap-2">
-              <h2 className="h6 mb-0 flex-grow-1">Nerazporejena naročila</h2>
-              <select
-                className="form-select form-select-sm w-auto"
-                value={region}
-                onChange={(e) => setRegion(e.target.value)}
-                aria-label="Regija"
-              >
-                <option value="">Vse regije</option>
-                {regions.map((name) => <option key={name} value={name}>{name}</option>)}
-              </select>
-            </div>
-            <ul className="list-group list-group-flush tp-scroll-list">
-              {shownOrders.length === 0 && <li className="list-group-item text-muted">Ni naročil.</li>}
-              {shownOrders.map((order) => (
-                <li key={order.id} className="list-group-item d-flex align-items-center gap-2">
-                  <div className="flex-grow-1">
-                    <div>
-                      {order.customer} <span className="small text-muted">· {order.number}</span>
-                    </div>
-                    <div className="small text-muted">
-                      {order.city} · {formatNumber(order.weight_kg)} kg · {formatNumber(order.pallets)} pal. ·
-                      rok {formatDate(order.dispatch_deadline)}
-                    </div>
-                    {order.status === "NOT_DELIVERED" && (
-                      <span className="badge bg-danger-subtle text-danger-emphasis mt-1">ponovna dostava</span>
-                    )}
-                  </div>
-                  {order.is_late && (
-                    <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
-                      ⚠ po roku odpreme
-                    </span>
-                  )}
-                  <button
-                    className="btn btn-sm btn-outline-primary"
-                    onClick={() => update(() => addStop(tour.id, order.id))}
-                    aria-label={`Dodaj ${order.number} v turo`}
-                  >
-                    +
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+        <div className={mapLarge ? "col-lg-8" : "col-lg-5 d-flex flex-column gap-3"}>
+          {mapCard}
+          {!mapLarge && ordersCard}
         </div>
-
-        <div className="col-lg-7">
-          <div className="card h-100">
-            <div className="card-header d-flex align-items-center gap-2">
-              <h2 className="h6 mb-0 flex-grow-1">
-                Postanki ({tour.stops.length}){" "}
-                <span className="small text-muted fw-normal">· {formatNumber(tour.distance_km)} km zračne razdalje</span>
-              </h2>
-              <button
-                className="btn btn-sm btn-outline-primary"
-                onClick={suggestOrder}
-                disabled={tour.stops.length < 2 || suggestion !== null}
-              >
-                Predlagaj vrstni red
-              </button>
-            </div>
-            {suggestion && (
-              <div className="alert alert-info small rounded-0 border-0 border-bottom mb-0">
-                <div className="fw-medium mb-1">
-                  Predlagani vrstni red: {formatNumber(suggestion.distance_km)} km zračne razdalje (trenutno{" "}
-                  {formatNumber(suggestion.current_distance_km)} km)
-                </div>
-                <ol className="mb-2 ps-3">
-                  {suggestion.stops.map((stop) => (
-                    <li key={stop.id}>
-                      {stop.customer}, {stop.city} <span className="text-muted">· {stop.order_number}</span>
-                      {stop.lat === null && <span className="text-warning-emphasis"> · lokacija ni določena</span>}
-                    </li>
-                  ))}
-                </ol>
-                <div className="d-flex gap-2">
-                  <button
-                    className="btn btn-sm btn-primary"
-                    onClick={() => update(() => applySuggestedOrder(tour.id))}
-                  >
-                    Sprejmi predlog
-                  </button>
-                  <button className="btn btn-sm btn-outline-secondary" onClick={() => setSuggestion(null)}>
-                    Zavrzi
-                  </button>
-                  <span className="text-muted align-self-center">Zemljevid kaže predlagani vrstni red.</span>
-                </div>
-              </div>
-            )}
-            {tour.split_customers.length > 0 && (
-              <div className="alert alert-warning small rounded-0 border-0 border-bottom mb-0 py-2">
-                ⚠ Postanki iste stranke niso zaporedni: {tour.split_customers.join(", ")}
-              </div>
-            )}
-            <ul className="list-group list-group-flush tp-scroll-list">
-              {tour.stops.length === 0 && (
-                <li className="list-group-item text-muted">Dodaj naročila s seznama na levi.</li>
-              )}
-              {groups.map((group) => {
-                const grouped = group.stops.length > 1;
-                return [
-                  grouped && (
-                    <li key={`group-${group.stops[0].id}`} className="list-group-item tp-customer-group py-1 small">
-                      {group.customer} – {pluralize(group.stops.length, ["naročilo", "naročili", "naročila", "naročil"])}
-                    </li>
-                  ),
-                  ...group.stops.map((stop) => (
-                    <li
-                      key={stop.id}
-                      className={[
-                        "list-group-item d-flex align-items-start gap-2 tp-draggable",
-                        grouped && "tp-customer-group",
-                        dragged?.id === stop.id && "tp-dragging",
-                        dropClass(stop),
-                      ].filter(Boolean).join(" ")}
-                      draggable={draggableId === stop.id}
-                      onMouseDown={(e) => {
-                        setDraggableId(e.target.closest("input, button") ? null : stop.id);
-                      }}
-                      onDragStart={(e) => {
-                        e.dataTransfer.effectAllowed = "move";
-                        setDragged(stop);
-                      }}
-                      onDragEnd={endDrag}
-                      onDragOver={(e) => {
-                        if (!dragged) return;
-                        e.preventDefault();
-                        setDropSequence(stop.sequence);
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        dropOn(stop.sequence);
-                      }}
-                    >
-                      <span className="tp-drag-handle mt-1" title="Povleci na novo mesto" aria-hidden="true">
-                        ⠿
-                      </span>
-                      <span className="tp-sequence mt-1">{stop.sequence}</span>
-                      <div className="flex-grow-1">
-                        <div>
-                          {stop.customer} <span className="small text-muted">· {stop.order_number}</span>
-                        </div>
-                        <div className="small text-muted">
-                          {stop.address}, {stop.city} · {formatNumber(stop.weight_kg)} kg ·{" "}
-                          {formatNumber(stop.pallets)} pal.
-                        </div>
-                        {stop.lat === null && (
-                          <div className="small text-warning-emphasis">⚠ Lokacija ni določena</div>
-                        )}
-                        {stop.delivery_note && (
-                          <div className="small text-info-emphasis mt-1">
-                            📌 Stalna opomba: {stop.delivery_note}{" "}
-                            <button
-                              type="button"
-                              className="btn btn-link btn-sm p-0 small align-baseline"
-                              onClick={() => update(() => updateDeliveryNote(stop.id, ""))}
-                            >
-                              odstrani
-                            </button>
-                          </div>
-                        )}
-                        <DriverNoteInput
-                          // Ob spremembi shranjenih opomb se polje ponastavi na shranjeno opombo za voznika
-                          key={`${stop.id}-${stop.driver_note}-${stop.delivery_note}`}
-                          stop={stop}
-                          onSave={(note) => update(() => updateDriverNote(stop.id, note))}
-                          onSaveAsDeliveryNote={(note) => update(() => updateDeliveryNote(stop.id, note))}
-                        />
-                      </div>
-                      <div className="d-flex gap-1">
-                        <button
-                          className="btn btn-sm btn-outline-primary"
-                          onClick={() => update(() => moveStop(stop.id, "up"))}
-                          disabled={stop.sequence === 1}
-                          aria-label={`Premakni ${stop.order_number} gor`}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          className="btn btn-sm btn-outline-primary"
-                          onClick={() => update(() => moveStop(stop.id, "down"))}
-                          disabled={stop.sequence === lastSequence}
-                          aria-label={`Premakni ${stop.order_number} dol`}
-                        >
-                          ↓
-                        </button>
-                        <button
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() => update(() => removeStop(stop.id))}
-                          aria-label={`Odstrani ${stop.order_number} iz ture`}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    </li>
-                  )),
-                ];
-              })}
-            </ul>
-          </div>
+        <div className={mapLarge ? "col-lg-4 d-flex flex-column gap-3 tp-compact" : "col-lg-7"}>
+          {mapLarge && ordersCard}
+          {stopsCard}
         </div>
       </div>
     </>

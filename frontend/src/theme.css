@@ -321,6 +321,43 @@ main h1 {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
 
+/* Povečan zemljevid zasede skoraj celo višino okna in ostane viden med drsenjem po seznamih */
+.tp-map-large {
+  height: calc(100vh - 5rem);
+}
+
+/* Ob povečanem zemljevidu sta seznama izpisana v celoti, drsi se cela stran */
+.tp-compact .tp-scroll-list {
+  max-height: none;
+}
+
+
+/* Nerazporejeno naročilo ima sivo oznako, naročilo po roku odpreme rdečo */
+.tp-map-marker .tp-map-order,
+.tp-map-legend.tp-map-order {
+  background-color: #8a857c;
+}
+
+.tp-map-marker .tp-map-late,
+.tp-map-legend.tp-map-late {
+  background-color: #c0392b;
+}
+
+/* Naročilo stranke, ki že ima postanek v turi, je zamaknjeno ob številko postanka */
+.tp-map-marker .tp-map-shifted {
+  transform: translate(40%, -120%);
+}
+
+/* Barvni krogec v legendi pod zemljevidom */
+.tp-map-legend {
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background-color: #4f8a63;
+  vertical-align: -1px;
+}
+
 /* Skladišče ima temno oznako, da se loči od postankov */
 .tp-map-marker .tp-map-warehouse {
   background-color: #2f2c27;

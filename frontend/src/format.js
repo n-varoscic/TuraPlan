@@ -17,6 +17,13 @@ export function todayIso() {
   return new Date().toLocaleDateString("sv-SE");
 }
 
+// Datum v obliki 2026-11-10, zamaknjen za dano število dni; računamo v UTC, da ga ne premakne prehod na poletni čas
+export function addDays(date, days) {
+  const result = new Date(date);
+  result.setUTCDate(result.getUTCDate() + days);
+  return result.toISOString().slice(0, 10);
+}
+
 // Število palet s pravilnim sklonom za »Preseženo za …«: 1 paleto, 2 paleti, 3 palete, 5 palet, 1,5 palete
 export function formatPallets(value) {
   const number = Number(value);
