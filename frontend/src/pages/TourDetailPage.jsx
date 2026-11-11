@@ -1,23 +1,29 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getTour, unconfirmTour } from "../api/client.js";
+import { getTour, getTourRoute, unconfirmTour } from "../api/client.js";
 import DeliveryProgress from "../components/DeliveryProgress.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import TourLoad from "../components/TourLoad.jsx";
 import TourMap from "../components/TourMap.jsx";
-import { formatDate, formatDateTime, formatNumber } from "../format.js";
+import { formatDate, formatDateTime, formatDuration, formatNumber } from "../format.js";
 import { STOP_RESULT, TOUR_STATUS } from "../labels.js";
 
 // Podrobnosti ture: podatki ture in vsi postanki z rezultatom dostave
 export default function TourDetailPage() {
   const { id } = useParams();
   const [tour, setTour] = useState(null);
+  // Pot ture po cestah; null, dokler se nalaga ali če storitev ni dosegljiva
+  const [road, setRoad] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     getTour(id)
       .then(setTour)
       .catch((err) => setError(err.message));
+    // Brez poti po cestah zemljevid pokaže ravne črte, zato napake ne prikazujemo
+    getTourRoute(id)
+      .then((data) => setRoad(data.road))
+      .catch(() => setRoad(null));
   }, [id]);
 
   async function unconfirm() {
@@ -62,12 +68,20 @@ export default function TourDetailPage() {
         )}
         <dt className="col-sm-3">Zasedenost vozila</dt>
         <dd className="col-sm-9"><TourLoad tour={tour} /></dd>
+        {road && (
+          <>
+            <dt className="col-sm-3">Pot po cestah</dt>
+            <dd className="col-sm-9">
+              {formatNumber(road.distance_km)} km · {formatDuration(road.duration_min)} vožnje
+            </dd>
+          </>
+        )}
         <dt className="col-sm-3">Napredek dostav</dt>
         <dd className="col-sm-9"><DeliveryProgress tour={tour} /></dd>
       </dl>
 
       <div className="card p-2 mb-4">
-        <TourMap warehouse={tour.warehouse} stops={tour.stops} />
+        <TourMap warehouse={tour.warehouse} stops={tour.stops} roadLine={road?.geometry} />
       </div>
 
       <h2 className="h5">Postanki</h2>

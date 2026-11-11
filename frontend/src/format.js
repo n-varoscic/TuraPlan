@@ -17,6 +17,12 @@ export function todayIso() {
   return new Date().toLocaleDateString("sv-SE");
 }
 
+// Čas vožnje iz minut: 45 min, 2 h 5 min
+export function formatDuration(minutes) {
+  const hours = Math.floor(minutes / 60);
+  return hours > 0 ? `${hours} h ${minutes % 60} min` : `${minutes} min`;
+}
+
 // Datum v obliki 2026-11-10, zamaknjen za dano število dni; računamo v UTC, da ga ne premakne prehod na poletni čas
 export function addDays(date, days) {
   const result = new Date(date);

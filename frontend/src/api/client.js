@@ -127,14 +127,19 @@ export function moveStop(stopId, direction) {
   return apiRequest(`/stops/${stopId}/move/`, { method: "POST", body: { direction } });
 }
 
-// Predlog vrstnega reda postankov z zračno razdaljo, v bazo se nič ne shrani
+// Pot ture po cestah: razdalja, čas vožnje in črta za zemljevid; road je null, če storitev ni dosegljiva
+export function getTourRoute(tourId) {
+  return apiRequest(`/tours/${tourId}/route/`);
+}
+
+// Predlog vrstnega reda postankov z razdaljo in potjo po cestah, v bazo se nič ne shrani
 export function getSuggestedOrder(tourId) {
   return apiRequest(`/tours/${tourId}/suggested-order/`);
 }
 
-// Shrani predlagani vrstni red in vrne posodobljeno turo
-export function applySuggestedOrder(tourId) {
-  return apiRequest(`/tours/${tourId}/suggested-order/`, { method: "POST" });
+// Shrani vrstni red iz prikazanega predloga in vrne posodobljeno turo
+export function applySuggestedOrder(tourId, stopIds) {
+  return apiRequest(`/tours/${tourId}/suggested-order/`, { method: "POST", body: { stop_ids: stopIds } });
 }
 
 // Potrditev ture, ob neizpolnjenih pogojih API vrne vse razloge
