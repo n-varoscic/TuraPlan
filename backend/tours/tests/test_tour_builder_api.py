@@ -80,11 +80,11 @@ def test_planned_order_cannot_be_added_again(dispatcher_client, draft_tour):
     assert response.status_code == 400
 
 
-def test_order_received_after_tour_date_cannot_be_added(dispatcher_client, seeded):
-    tour = Tour.objects.get(dispatch_date=timezone.localdate())
-    tour.dispatch_date -= timedelta(days=1)
-    tour.save()
-    response = dispatcher_client.post(f"/api/tours/{tour.id}/stops/", {"order": order("N-025").id})
+def test_order_received_after_tour_date_cannot_be_added(dispatcher_client, draft_tour):
+    # Osnutek prestavimo na predvčerajšnjim, naročilo N-025 pa je prejeto šele danes
+    draft_tour.dispatch_date = timezone.localdate() - timedelta(days=2)
+    draft_tour.save()
+    response = dispatcher_client.post(f"/api/tours/{draft_tour.id}/stops/", {"order": order("N-025").id})
     assert response.status_code == 400
     assert "Naročilo je prejeto po datumu odpreme ture" in response.data
 

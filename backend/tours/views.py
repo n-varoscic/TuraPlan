@@ -11,8 +11,8 @@ from .serializers import (
     OrderSerializer, TourCreateSerializer, TourDetailSerializer, TourListSerializer, VehicleSerializer,
 )
 from .services import (
-    add_stop, available_drivers, available_vehicles, change_vehicle, move_stop, move_stop_to, remove_stop,
-    unassigned_orders, update_customer_delivery_note, update_driver_note,
+    add_stop, available_drivers, available_vehicles, change_vehicle, confirm_tour, move_stop, move_stop_to,
+    remove_stop, unassigned_orders, unconfirm_tour, update_customer_delivery_note, update_driver_note,
 )
 
 
@@ -151,3 +151,25 @@ class StopDeliveryNoteView(APIView):
         stop = get_object_or_404(Stop, pk=pk)
         update_customer_delivery_note(stop, request.data.get("delivery_note", ""))
         return tour_response(stop.tour)
+
+
+class TourConfirmView(APIView):
+    """POST /api/tours/{id}/confirm/ potrdi turo, sicer vrne vse neizpolnjene pogoje"""
+
+    permission_classes = [IsDispatcher]
+
+    def post(self, request, pk):
+        tour = get_object_or_404(tours_with_details(), pk=pk)
+        confirm_tour(tour)
+        return tour_response(tour)
+
+
+class TourUnconfirmView(APIView):
+    """POST /api/tours/{id}/unconfirm/ vrne potrjeno turo v osnutek"""
+
+    permission_classes = [IsDispatcher]
+
+    def post(self, request, pk):
+        tour = get_object_or_404(Tour, pk=pk)
+        unconfirm_tour(tour)
+        return tour_response(tour)

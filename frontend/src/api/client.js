@@ -126,6 +126,16 @@ export function moveStop(stopId, direction) {
   return apiRequest(`/stops/${stopId}/move/`, { method: "POST", body: { direction } });
 }
 
+// Potrditev ture, ob neizpolnjenih pogojih API vrne vse razloge
+export function confirmTour(tourId) {
+  return apiRequest(`/tours/${tourId}/confirm/`, { method: "POST" });
+}
+
+// Vrnitev potrjene ture v osnutek, dokler je voznik ni začel
+export function unconfirmTour(tourId) {
+  return apiRequest(`/tours/${tourId}/unconfirm/`, { method: "POST" });
+}
+
 // Premik postanka na poljubno mesto, npr. ob vlečenju z miško
 export function moveStopTo(stopId, position) {
   return apiRequest(`/stops/${stopId}/move/`, { method: "POST", body: { position } });

@@ -1,9 +1,10 @@
-"""Poslovna pravila tur: sestavljanje, kapaciteta vozila in napredek dostav"""
+"""Poslovna pravila tur: sestavljanje, kapaciteta vozila, potrditev in napredek dostav"""
 
 from decimal import Decimal
 
 from django.db import transaction
 from django.db.models import F
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from users.models import User
@@ -93,6 +94,7 @@ def unassigned_orders(date=None, region=None):
 @transaction.atomic
 def add_stop(tour, order):
     """Doda naročilo na konec ture in ga označi kot planirano"""
+    ensure_draft(tour)
     errors = []
     if order.status not in UNASSIGNED_STATUSES:
         errors.append("Naročilo je že v turi ali je dostavljeno")
@@ -121,6 +123,7 @@ def add_stop(tour, order):
 @transaction.atomic
 def move_stop_to(stop, position):
     """Premakne postanek na mesto position, ostali postanki se zamaknejo"""
+    ensure_draft(stop.tour)
     stops = list(stop.tour.stops.order_by("sequence"))
     if not 1 <= position <= len(stops):
         raise ValidationError([f"Mesto mora biti med 1 in {len(stops)}"])
@@ -137,6 +140,7 @@ def move_stop_to(stop, position):
 
 def move_stop(stop, direction):
     """Premakne postanek za eno mesto gor (up) ali dol (down)"""
+    ensure_draft(stop.tour)
     if direction not in ("up", "down"):
         raise ValidationError(["Smer mora biti up ali down"])
     position = stop.sequence - 1 if direction == "up" else stop.sequence + 1
@@ -147,14 +151,80 @@ def move_stop(stop, direction):
     move_stop_to(stop, position)
 
 
+def pluralize(count, forms):
+    """Število z ustreznim sklonom, forms so oblike za 1, 2, 3 in 4 ter 5 ali več: 2 znaka, 5 znakov"""
+    one, two, few, many = forms
+    words = {1: one, 2: two, 3: few, 4: few}
+    return f"{format_number(count)} {words.get(count % 100, many)}"
+
+
 def characters(count):
     """Število znakov s pravilnim sklonom: 1 znak, 2 znaka, 3 znake, 5 znakov"""
-    words = {1: "znak", 2: "znaka", 3: "znake", 4: "znake"}
-    return f"{count} {words.get(count % 100, 'znakov')}"
+    return pluralize(count, ["znak", "znaka", "znake", "znakov"])
+
+
+def format_number(value):
+    """Število v slovenski obliki: 1.200, 1,5"""
+    text = f"{Decimal(value):,.2f}".rstrip("0").rstrip(".")
+    return text.translate(str.maketrans({",": ".", ".": ","}))
+
+
+def format_pallets(value):
+    """Palete v tožilniku za »presežena za …«: 1 paleto, 2 paleti, 1,5 palete, 5 palet"""
+    if Decimal(value) != Decimal(value).to_integral_value():
+        return f"{format_number(value)} palete"
+    return pluralize(int(value), ["paleto", "paleti", "palete", "palet"])
+
+
+def ensure_draft(tour):
+    """Potrjene ture in ture v dostavi so zaklenjene za urejanje"""
+    if tour.status != Tour.Status.DRAFT:
+        raise ValidationError(["Turo je mogoče spreminjati samo v osnutku"])
+
+
+def confirmation_errors(tour):
+    """Vsi razlogi, zakaj ture še ni mogoče potrditi"""
+    errors = []
+    if tour.status != Tour.Status.DRAFT:
+        errors.append("Potrditi je mogoče samo turo v osnutku")
+    if not tour.vehicle_id:
+        errors.append("Tura nima vozila")
+    if not tour.driver_id:
+        errors.append("Tura nima voznika")
+    if not tour.stops.exists():
+        errors.append("Tura nima nobenega postanka")
+    load = tour_load(tour)
+    if load["weight_exceeded_by"] > 0:
+        errors.append(f"Kapaciteta je presežena za {format_number(load['weight_exceeded_by'])} kg")
+    if load["pallets_exceeded_by"] > 0:
+        errors.append(f"Kapaciteta je presežena za {format_pallets(load['pallets_exceeded_by'])}")
+    return errors
+
+
+def confirm_tour(tour):
+    """Potrdi turo in zabeleži čas potrditve; potrjeno turo vidi voznik"""
+    errors = confirmation_errors(tour)
+    if errors:
+        raise ValidationError(errors)
+    tour.status = Tour.Status.CONFIRMED
+    tour.confirmed_at = timezone.now()
+    tour.save()
+
+
+def unconfirm_tour(tour):
+    """Vrne potrjeno turo v osnutek, dokler je voznik ni začel"""
+    if tour.status in (Tour.Status.IN_DELIVERY, Tour.Status.COMPLETED):
+        raise ValidationError(["Voznik je turo že začel, zato je ni mogoče vrniti v osnutek"])
+    if tour.status != Tour.Status.CONFIRMED:
+        raise ValidationError(["Tura ni potrjena"])
+    tour.status = Tour.Status.DRAFT
+    tour.confirmed_at = None
+    tour.save()
 
 
 def update_driver_note(stop, note):
     """Shrani opombo za voznika, ki ima lahko največ 300 znakov"""
+    ensure_draft(stop.tour)
     note = note.strip()
     check_note_length(note)
     stop.driver_note = note
@@ -169,6 +239,7 @@ def check_note_length(note):
 
 def update_customer_delivery_note(stop, note):
     """Shrani stalno opombo stranke postanka; enaka opomba za voznika ni več potrebna"""
+    ensure_draft(stop.tour)
     note = note.strip()
     check_note_length(note)
     customer = stop.order.customer
@@ -192,6 +263,7 @@ def split_customers(tour):
 @transaction.atomic
 def remove_stop(stop):
     """Odstrani postanek, vrne naročilo med nerazporejena in preštevilči ostale postanke"""
+    ensure_draft(stop.tour)
     tour, order = stop.tour, stop.order
     stop.delete()
     order.status = Order.Status.NEW

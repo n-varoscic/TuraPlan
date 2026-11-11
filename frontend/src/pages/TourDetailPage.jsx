@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getTour } from "../api/client.js";
+import { getTour, unconfirmTour } from "../api/client.js";
 import DeliveryProgress from "../components/DeliveryProgress.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import TourLoad from "../components/TourLoad.jsx";
@@ -19,8 +19,16 @@ export default function TourDetailPage() {
       .catch((err) => setError(err.message));
   }, [id]);
 
-  if (error) return <div className="alert alert-danger">{error}</div>;
-  if (!tour) return <p className="text-muted">Nalagam …</p>;
+  async function unconfirm() {
+    setError("");
+    try {
+      setTour(await unconfirmTour(tour.id));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  if (!tour) return error ? <div className="alert alert-danger">{error}</div> : <p className="text-muted">Nalagam …</p>;
 
   return (
     <>
@@ -33,11 +41,24 @@ export default function TourDetailPage() {
         {tour.status === "DRAFT" && (
           <Link to={`/tours/${tour.id}/edit`} className="btn btn-sm btn-primary ms-auto">Uredi turo</Link>
         )}
+        {/* Potrjeno turo lahko disponent odklene, dokler je voznik ni začel */}
+        {tour.status === "CONFIRMED" && (
+          <button className="btn btn-sm btn-outline-primary ms-auto" onClick={unconfirm}>
+            Vrni v osnutek
+          </button>
+        )}
       </div>
+      {error && <div className="alert alert-danger">{error}</div>}
 
       <dl className="row mb-4">
         <dt className="col-sm-3">Voznik</dt>
         <dd className="col-sm-9">{tour.driver.first_name} {tour.driver.last_name}</dd>
+        {tour.confirmed_at && (
+          <>
+            <dt className="col-sm-3">Potrjena</dt>
+            <dd className="col-sm-9">{formatDateTime(tour.confirmed_at)}</dd>
+          </>
+        )}
         <dt className="col-sm-3">Zasedenost vozila</dt>
         <dd className="col-sm-9"><TourLoad tour={tour} /></dd>
         <dt className="col-sm-3">Napredek dostav</dt>
