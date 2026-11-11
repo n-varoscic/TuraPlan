@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import {
-  addStop, changeVehicle, confirmTour, getOrders, getTour, getTourOptions, moveStop, moveStopTo, removeStop,
-  updateDeliveryNote, updateDriverNote,
+  addStop, applySuggestedOrder, changeVehicle, confirmTour, getOrders, getSuggestedOrder, getTour,
+  getTourOptions, moveStop, moveStopTo, removeStop, updateDeliveryNote, updateDriverNote,
 } from "../api/client.js";
 import DriverNoteInput from "../components/DriverNoteInput.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
@@ -24,6 +24,8 @@ export default function TourBuilderPage() {
   // Postanek, ki ga je mogoče vleči; ob kliku v polje ali gumb ga izklopimo, da označevanje besedila deluje
   const [draggableId, setDraggableId] = useState(null);
   const [region, setRegion] = useState("");
+  // Predlog vrstnega reda, ki ga disponent še ni sprejel ali zavrgel
+  const [suggestion, setSuggestion] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -39,10 +41,22 @@ export default function TourBuilderPage() {
   // Po dodajanju ali odstranjevanju prikažemo novo turo in osvežimo nerazporejena naročila
   async function update(action) {
     setError("");
+    // Po vsaki spremembi ture star predlog ne velja več
+    setSuggestion(null);
     try {
       const updated = await action();
       setTour(updated);
       setOrders(await getOrders(updated.dispatch_date));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  // Predlog samo prikažemo, shrani se šele, ko ga disponent sprejme
+  async function suggestOrder() {
+    setError("");
+    try {
+      setSuggestion(await getSuggestedOrder(tour.id));
     } catch (err) {
       setError(err.message);
     }
@@ -152,7 +166,7 @@ export default function TourBuilderPage() {
         <div className="col-lg-5 d-flex flex-column gap-3">
           {/* Zemljevid se izriše iz postankov ture, zato se ob vsaki spremembi vrstnega reda takoj posodobi */}
           <div className="card p-2">
-            <TourMap warehouse={tour.warehouse} stops={tour.stops} />
+            <TourMap warehouse={tour.warehouse} stops={suggestion ? suggestion.stops : tour.stops} />
           </div>
           <div className="card flex-grow-1">
             <div className="card-header d-flex align-items-center gap-2">
@@ -203,9 +217,47 @@ export default function TourBuilderPage() {
 
         <div className="col-lg-7">
           <div className="card h-100">
-            <div className="card-header">
-              <h2 className="h6 mb-0">Postanki ({tour.stops.length})</h2>
+            <div className="card-header d-flex align-items-center gap-2">
+              <h2 className="h6 mb-0 flex-grow-1">
+                Postanki ({tour.stops.length}){" "}
+                <span className="small text-muted fw-normal">· {formatNumber(tour.distance_km)} km zračne razdalje</span>
+              </h2>
+              <button
+                className="btn btn-sm btn-outline-primary"
+                onClick={suggestOrder}
+                disabled={tour.stops.length < 2 || suggestion !== null}
+              >
+                Predlagaj vrstni red
+              </button>
             </div>
+            {suggestion && (
+              <div className="alert alert-info small rounded-0 border-0 border-bottom mb-0">
+                <div className="fw-medium mb-1">
+                  Predlagani vrstni red: {formatNumber(suggestion.distance_km)} km zračne razdalje (trenutno{" "}
+                  {formatNumber(suggestion.current_distance_km)} km)
+                </div>
+                <ol className="mb-2 ps-3">
+                  {suggestion.stops.map((stop) => (
+                    <li key={stop.id}>
+                      {stop.customer}, {stop.city} <span className="text-muted">· {stop.order_number}</span>
+                      {stop.lat === null && <span className="text-warning-emphasis"> · lokacija ni določena</span>}
+                    </li>
+                  ))}
+                </ol>
+                <div className="d-flex gap-2">
+                  <button
+                    className="btn btn-sm btn-primary"
+                    onClick={() => update(() => applySuggestedOrder(tour.id))}
+                  >
+                    Sprejmi predlog
+                  </button>
+                  <button className="btn btn-sm btn-outline-secondary" onClick={() => setSuggestion(null)}>
+                    Zavrzi
+                  </button>
+                  <span className="text-muted align-self-center">Zemljevid kaže predlagani vrstni red.</span>
+                </div>
+              </div>
+            )}
             {tour.split_customers.length > 0 && (
               <div className="alert alert-warning small rounded-0 border-0 border-bottom mb-0 py-2">
                 ⚠ Postanki iste stranke niso zaporedni: {tour.split_customers.join(", ")}
