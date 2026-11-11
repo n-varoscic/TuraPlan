@@ -4,7 +4,8 @@ from users.serializers import UserSerializer
 
 from .models import Order, Stop, Tour, Vehicle
 from .services import (
-    confirmation_errors, delivery_progress, split_customers, tour_creation_errors, tour_load,
+    complete_errors, confirmation_errors, delivery_progress, split_customers, start_errors,
+    tour_creation_errors, tour_load,
 )
 
 
@@ -23,6 +24,7 @@ class StopSerializer(serializers.ModelSerializer):
     delivery_note = serializers.CharField(source="order.customer.delivery_note")
     address = serializers.CharField(source="order.customer.address")
     city = serializers.CharField(source="order.customer.city")
+    phone = serializers.CharField(source="order.customer.phone")
     weight_kg = serializers.DecimalField(source="order.weight_kg", max_digits=8, decimal_places=2)
     pallets = serializers.DecimalField(source="order.pallets", max_digits=5, decimal_places=2)
 
@@ -30,7 +32,7 @@ class StopSerializer(serializers.ModelSerializer):
         model = Stop
         fields = [
             "id", "sequence", "order_number", "customer_id", "customer", "delivery_note", "address", "city",
-            "weight_kg", "pallets", "driver_note", "result", "reason", "marked_at",
+            "phone", "weight_kg", "pallets", "driver_note", "result", "reason", "marked_at",
         ]
 
 
@@ -61,11 +63,13 @@ class TourDetailSerializer(TourListSerializer):
         ]
 
     def to_representation(self, tour):
-        # Stranke z nezaporednimi postanki in razlogi, zakaj ture še ni mogoče potrditi
+        # Opozorila in razlogi, zakaj ture še ni mogoče potrditi, začeti ali zaključiti
         return {
             **super().to_representation(tour),
             "split_customers": split_customers(tour),
             "confirmation_errors": confirmation_errors(tour),
+            "start_errors": start_errors(tour),
+            "complete_errors": complete_errors(tour),
         }
 
 

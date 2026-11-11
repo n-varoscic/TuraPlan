@@ -1,8 +1,9 @@
 from django.urls import path
 
 from .views import (
-    OrderListView, StopDeliveryNoteView, StopDetailView, StopMoveView, TourConfirmView, TourDetailView,
-    TourListView, TourOptionsView, TourStopsView, TourUnconfirmView,
+    MyTourListView, OrderListView, StopDeliveryNoteView, StopDetailView, StopMoveView,
+    StopResultView, TourCompleteView, TourConfirmView, TourDetailView, TourListView,
+    TourOptionsView, TourStartView, TourStopsView, TourUnconfirmView,
 )
 
 urlpatterns = [
@@ -12,8 +13,12 @@ urlpatterns = [
     path("tours/<int:pk>/stops/", TourStopsView.as_view(), name="tour-stops"),
     path("tours/<int:pk>/confirm/", TourConfirmView.as_view(), name="tour-confirm"),
     path("tours/<int:pk>/unconfirm/", TourUnconfirmView.as_view(), name="tour-unconfirm"),
+    path("tours/<int:pk>/start/", TourStartView.as_view(), name="tour-start"),
+    path("tours/<int:pk>/complete/", TourCompleteView.as_view(), name="tour-complete"),
+    path("my-tours/", MyTourListView.as_view(), name="my-tours"),
     path("stops/<int:pk>/", StopDetailView.as_view(), name="stop-detail"),
     path("stops/<int:pk>/move/", StopMoveView.as_view(), name="stop-move"),
+    path("stops/<int:pk>/result/", StopResultView.as_view(), name="stop-result"),
     path("stops/<int:pk>/delivery-note/", StopDeliveryNoteView.as_view(), name="stop-delivery-note"),
     path("orders/", OrderListView.as_view(), name="order-list"),
 ]
