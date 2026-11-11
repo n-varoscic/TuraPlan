@@ -1,6 +1,9 @@
 """Poslovna pravila tur: sestavljanje, kapaciteta vozila, potrditev in izvedba dostav"""
 
+import json
 from decimal import Decimal
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 from django.db import transaction
 from django.db.models import F
@@ -16,6 +19,9 @@ UNASSIGNED_STATUSES = [Order.Status.NEW, Order.Status.NOT_DELIVERED]
 
 # Opomba za voznika in stalna opomba stranke imata največ 300 znakov
 DRIVER_NOTE_MAX_LENGTH = 300
+
+# Brezplačna storitev OpenStreetMap, ki iz naslova vrne koordinate
+NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 
 
 def tour_load(tour):
@@ -91,6 +97,44 @@ def unassigned_orders(date=None, region=None):
     return orders.order_by("dispatch_deadline", "number")
 
 
+def customer_address(customer):
+    """Poln naslov stranke, po katerem iščemo koordinate"""
+    return f"{customer.address}, {customer.postal_code} {customer.city}"
+
+
+def geocode(address):
+    """Vrne (lat, lng) naslova iz storitve Nominatim ali None, če lokacije ni mogoče določiti"""
+    params = urlencode({"format": "json", "limit": 1, "countrycodes": "si", "q": address})
+    # Storitev zahteva, da se aplikacija predstavi z glavo User-Agent
+    headers = {"User-Agent": "TuraPlan/1.0 (studentski projekt)"}
+    request = Request(f"{NOMINATIM_URL}?{params}", headers=headers)
+    try:
+        with urlopen(request, timeout=5) as response:
+            results = json.load(response)
+    except (OSError, ValueError):
+        # Storitev ni dosegljiva ali je vrnila neveljaven odgovor
+        return None
+    if not results:
+        return None
+    return round(Decimal(results[0]["lat"]), 6), round(Decimal(results[0]["lon"]), 6)
+
+
+def locate_customer(customer):
+    """Poišče in shrani koordinate stranke, če jih še nima ali se je njen naslov spremenil"""
+    address = customer_address(customer)
+    if customer.lat is not None and customer.geocoded_address == address:
+        return
+    location = geocode(address)
+    if location:
+        customer.lat, customer.lng = location
+        customer.geocoded_address = address
+    else:
+        # Stare koordinate za nov naslov ne veljajo, zato stranka ostane brez lokacije
+        customer.lat = customer.lng = None
+        customer.geocoded_address = ""
+    customer.save()
+
+
 @transaction.atomic
 def add_stop(tour, order):
     """Doda naročilo na konec ture in ga označi kot planirano"""
@@ -102,6 +146,9 @@ def add_stop(tour, order):
         errors.append("Naročilo je prejeto po datumu odpreme ture")
     if errors:
         raise ValidationError(errors)
+
+    # Naročilo se doda tudi, če lokacije stranke ni mogoče določiti
+    locate_customer(order.customer)
 
     # Naročilo stranke, ki je že v turi, gre takoj za njen zadnji postanek, sicer na konec
     customer_stops = tour.stops.filter(order__customer=order.customer)

@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from users.serializers import UserSerializer
 
-from .models import Order, Stop, Tour, Vehicle
+from .models import Order, Settings, Stop, Tour, Vehicle
 from .services import (
     complete_errors, confirmation_errors, delivery_progress, split_customers, start_errors,
     tour_creation_errors, tour_load,
@@ -25,6 +25,9 @@ class StopSerializer(serializers.ModelSerializer):
     address = serializers.CharField(source="order.customer.address")
     city = serializers.CharField(source="order.customer.city")
     phone = serializers.CharField(source="order.customer.phone")
+    # Koordinate stranke za zemljevid, None pomeni, da lokacija ni določena
+    lat = serializers.FloatField(source="order.customer.lat")
+    lng = serializers.FloatField(source="order.customer.lng")
     weight_kg = serializers.DecimalField(source="order.weight_kg", max_digits=8, decimal_places=2)
     pallets = serializers.DecimalField(source="order.pallets", max_digits=5, decimal_places=2)
 
@@ -32,7 +35,7 @@ class StopSerializer(serializers.ModelSerializer):
         model = Stop
         fields = [
             "id", "sequence", "order_number", "customer_id", "customer", "delivery_note", "address", "city",
-            "phone", "weight_kg", "pallets", "driver_note", "result", "reason", "marked_at",
+            "phone", "lat", "lng", "weight_kg", "pallets", "driver_note", "result", "reason", "marked_at",
         ]
 
 
@@ -64,8 +67,15 @@ class TourDetailSerializer(TourListSerializer):
 
     def to_representation(self, tour):
         # Opozorila in razlogi, zakaj ture še ni mogoče potrditi, začeti ali zaključiti
+        settings = Settings.load()
         return {
             **super().to_representation(tour),
+            # Skladišče je začetna točka ture na zemljevidu
+            "warehouse": {
+                "address": settings.warehouse_address,
+                "lat": settings.warehouse_lat,
+                "lng": settings.warehouse_lng,
+            },
             "split_customers": split_customers(tour),
             "confirmation_errors": confirmation_errors(tour),
             "start_errors": start_errors(tour),

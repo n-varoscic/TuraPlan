@@ -25,6 +25,8 @@ class Customer(models.Model):
     region = models.CharField("regija", max_length=100)
     lat = models.DecimalField("zemljepisna širina", max_digits=9, decimal_places=6, null=True, blank=True)
     lng = models.DecimalField("zemljepisna dolžina", max_digits=9, decimal_places=6, null=True, blank=True)
+    # Naslov, za katerega veljata lat in lng; če se naslov stranke spremeni, koordinate poiščemo znova
+    geocoded_address = models.CharField("naslov koordinat", max_length=320, blank=True)
     contact_name = models.CharField("kontaktna oseba", max_length=100, blank=True)
     phone = models.CharField("telefon", max_length=30, blank=True)
     delivery_note = models.CharField("stalna opomba za dostavo", max_length=300, blank=True)
