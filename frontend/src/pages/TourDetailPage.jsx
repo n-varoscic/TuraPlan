@@ -4,6 +4,7 @@ import { getTour, unconfirmTour } from "../api/client.js";
 import DeliveryProgress from "../components/DeliveryProgress.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import TourLoad from "../components/TourLoad.jsx";
+import TourMap from "../components/TourMap.jsx";
 import { formatDate, formatDateTime, formatNumber } from "../format.js";
 import { STOP_RESULT, TOUR_STATUS } from "../labels.js";
 
@@ -64,6 +65,10 @@ export default function TourDetailPage() {
         <dt className="col-sm-3">Napredek dostav</dt>
         <dd className="col-sm-9"><DeliveryProgress tour={tour} /></dd>
       </dl>
+
+      <div className="card p-2 mb-4">
+        <TourMap warehouse={tour.warehouse} stops={tour.stops} />
+      </div>
 
       <h2 className="h5">Postanki</h2>
       {tour.stops.length === 0 && <p className="text-muted">Tura še nima postankov.</p>}
