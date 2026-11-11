@@ -2,6 +2,7 @@
 
 import json
 from decimal import Decimal
+from math import asin, cos, radians, sin, sqrt
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -12,7 +13,7 @@ from rest_framework.exceptions import ValidationError
 
 from users.models import User
 
-from .models import Order, Stop, Tour, Vehicle
+from .models import Order, Settings, Stop, Tour, Vehicle
 
 # Naročila, ki jih lahko disponent doda v turo
 UNASSIGNED_STATUSES = [Order.Status.NEW, Order.Status.NOT_DELIVERED]
@@ -22,6 +23,9 @@ DRIVER_NOTE_MAX_LENGTH = 300
 
 # Brezplačna storitev OpenStreetMap, ki iz naslova vrne koordinate
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+
+# Polmer Zemlje za izračun zračne razdalje
+EARTH_RADIUS_KM = 6371
 
 
 def tour_load(tour):
@@ -176,13 +180,17 @@ def move_stop_to(stop, position):
         raise ValidationError([f"Mesto mora biti med 1 in {len(stops)}"])
     stops.remove(stop)
     stops.insert(position - 1, stop)
+    renumber_stops(stop.tour, stops)
 
+
+def renumber_stops(tour, stops):
+    """Postankom ture shrani zaporedne številke 1 … N po vrstnem redu v seznamu stops"""
     # Najprej vsem postankom damo začasne številke nad obstoječimi,
     # ker ima vsaka številka v turi lahko samo en postanek
-    stop.tour.stops.update(sequence=F("sequence") + len(stops))
-    for sequence, other in enumerate(stops, start=1):
-        other.sequence = sequence
-        other.save()
+    tour.stops.update(sequence=F("sequence") + len(stops))
+    for sequence, stop in enumerate(stops, start=1):
+        stop.sequence = sequence
+        stop.save()
 
 
 def move_stop(stop, direction):
@@ -196,6 +204,72 @@ def move_stop(stop, direction):
     if position > stop.tour.stops.count():
         raise ValidationError(["Postanek je že na zadnjem mestu"])
     move_stop_to(stop, position)
+
+
+def distance_km(start, end):
+    """Zračna razdalja v km med točkama (lat, lng) po formuli haversine"""
+    lat1, lng1, lat2, lng2 = (radians(float(value)) for value in (*start, *end))
+    h = sin((lat2 - lat1) / 2) ** 2 + cos(lat1) * cos(lat2) * sin((lng2 - lng1) / 2) ** 2
+    return 2 * EARTH_RADIUS_KM * asin(sqrt(h))
+
+
+def warehouse_location():
+    """Koordinate skladišča (lat, lng), kjer se začne vsaka tura"""
+    settings = Settings.load()
+    return settings.warehouse_lat, settings.warehouse_lng
+
+
+def route_distance_km(stops):
+    """Skupna zračna razdalja od skladišča po postankih v danem vrstnem redu, na 0,1 km"""
+    points = [warehouse_location()]
+    points += [(stop.order.customer.lat, stop.order.customer.lng) for stop in stops]
+    # Skladišča ali postanka brez lokacije pri razdalji ne upoštevamo
+    points = [point for point in points if None not in point]
+    return round(sum(distance_km(a, b) for a, b in zip(points, points[1:])), 1)
+
+
+def suggested_order(tour):
+    """Predlog vrstnega reda postankov: od skladišča vsakič najbližja še neobiskana stranka"""
+    ensure_draft(tour)
+    position = warehouse_location()
+    if None in position:
+        raise ValidationError(["Skladišče nima določene lokacije"])
+
+    # Postanke iste stranke obravnavamo kot eno točko, zato v predlogu ostanejo zaporedni
+    stops_by_customer = {}
+    for stop in tour.stops.select_related("order__customer").order_by("sequence"):
+        stops_by_customer.setdefault(stop.order.customer, []).append(stop)
+    located = [customer for customer in stops_by_customer if customer.lat is not None]
+    # Stranke brez koordinat gredo na konec v obstoječem vrstnem redu
+    not_located = [customer for customer in stops_by_customer if customer.lat is None]
+
+    ordered = []
+    while located:
+        nearest = min(located, key=lambda customer: distance_km(position, (customer.lat, customer.lng)))
+        located.remove(nearest)
+        ordered.append(nearest)
+        position = (nearest.lat, nearest.lng)
+    return [stop for customer in ordered + not_located for stop in stops_by_customer[customer]]
+
+
+def suggested_order_preview(tour):
+    """Predlagani vrstni red z razdaljo in trenutna razdalja za primerjavo, v bazo se nič ne shrani"""
+    stops = suggested_order(tour)
+    current_distance_km = route_distance_km(tour.stops.select_related("order__customer").order_by("sequence"))
+    # Številke predloga nastavimo samo v pomnilniku, da jih prikažeta seznam in zemljevid
+    for sequence, stop in enumerate(stops, start=1):
+        stop.sequence = sequence
+    return {
+        "stops": stops,
+        "distance_km": route_distance_km(stops),
+        "current_distance_km": current_distance_km,
+    }
+
+
+@transaction.atomic
+def apply_suggested_order(tour):
+    """Shrani predlagani vrstni red; disponent lahko postanke potem še ročno premika"""
+    renumber_stops(tour, suggested_order(tour))
 
 
 def pluralize(count, forms):

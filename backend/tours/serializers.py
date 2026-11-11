@@ -4,8 +4,8 @@ from users.serializers import UserSerializer
 
 from .models import Order, Settings, Stop, Tour, Vehicle
 from .services import (
-    complete_errors, confirmation_errors, delivery_progress, split_customers, start_errors,
-    tour_creation_errors, tour_load,
+    complete_errors, confirmation_errors, delivery_progress, route_distance_km, split_customers,
+    start_errors, tour_creation_errors, tour_load,
 )
 
 
@@ -76,6 +76,8 @@ class TourDetailSerializer(TourListSerializer):
                 "lat": settings.warehouse_lat,
                 "lng": settings.warehouse_lng,
             },
+            # Zračna razdalja ture v trenutnem vrstnem redu postankov
+            "distance_km": route_distance_km(tour.stops.all()),
             "split_customers": split_customers(tour),
             "confirmation_errors": confirmation_errors(tour),
             "start_errors": start_errors(tour),
