@@ -24,6 +24,12 @@ DRIVER_NOTE_MAX_LENGTH = 300
 # Brezplačna storitev OpenStreetMap, ki iz naslova vrne koordinate
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 
+# Javni strežnik OSRM, ki iz podatkov OpenStreetMap izračuna pot po cestah
+OSRM_URL = "https://router.project-osrm.org"
+
+# Zunanji storitvi zahtevata, da se aplikacija predstavi z glavo User-Agent
+SERVICE_HEADERS = {"User-Agent": "TuraPlan/1.0 (studentski projekt)"}
+
 # Polmer Zemlje za izračun zračne razdalje
 EARTH_RADIUS_KM = 6371
 
@@ -109,9 +115,7 @@ def customer_address(customer):
 def geocode(address):
     """Vrne (lat, lng) naslova iz storitve Nominatim ali None, če lokacije ni mogoče določiti"""
     params = urlencode({"format": "json", "limit": 1, "countrycodes": "si", "q": address})
-    # Storitev zahteva, da se aplikacija predstavi z glavo User-Agent
-    headers = {"User-Agent": "TuraPlan/1.0 (studentski projekt)"}
-    request = Request(f"{NOMINATIM_URL}?{params}", headers=headers)
+    request = Request(f"{NOMINATIM_URL}?{params}", headers=SERVICE_HEADERS)
     try:
         with urlopen(request, timeout=5) as response:
             results = json.load(response)
@@ -219,20 +223,66 @@ def warehouse_location():
     return settings.warehouse_lat, settings.warehouse_lng
 
 
-def route_distance_km(stops):
-    """Skupna zračna razdalja od skladišča po postankih v danem vrstnem redu, na 0,1 km"""
+def route_points(stops):
+    """Točke poti (lat, lng): skladišče in za njim postanki v danem vrstnem redu"""
     points = [warehouse_location()]
     points += [(stop.order.customer.lat, stop.order.customer.lng) for stop in stops]
-    # Skladišča ali postanka brez lokacije pri razdalji ne upoštevamo
-    points = [point for point in points if None not in point]
+    # Skladišča ali postanka brez lokacije pri poti ne upoštevamo
+    return [point for point in points if None not in point]
+
+
+def route_distance_km(stops):
+    """Skupna zračna razdalja od skladišča po postankih v danem vrstnem redu, na 0,1 km"""
+    points = route_points(stops)
     return round(sum(distance_km(a, b) for a, b in zip(points, points[1:])), 1)
+
+
+def osrm(service, points, params):
+    """Vrne odgovor storitve OSRM za točke (lat, lng) ali None, če storitev ni dosegljiva"""
+    # OSRM pričakuje koordinate v vrstnem redu lng,lat, ločene s podpičjem
+    coordinates = ";".join(f"{lng},{lat}" for lat, lng in points)
+    url = f"{OSRM_URL}/{service}/v1/driving/{coordinates}?{urlencode(params)}"
+    try:
+        with urlopen(Request(url, headers=SERVICE_HEADERS), timeout=5) as response:
+            data = json.load(response)
+    except (OSError, ValueError):
+        # Storitev ni dosegljiva ali je vrnila neveljaven odgovor
+        return None
+    return data if data.get("code") == "Ok" else None
+
+
+def road_route(stops):
+    """Pot po cestah od skladišča po postankih: razdalja, čas vožnje in črta za zemljevid, sicer None"""
+    points = route_points(stops)
+    if len(points) < 2:
+        return None
+    data = osrm("route", points, {"overview": "full", "geometries": "geojson"})
+    if data is None:
+        return None
+    route = data["routes"][0]
+    return {
+        "distance_km": round(route["distance"] / 1000, 1),
+        "duration_min": round(route["duration"] / 60),
+        # OSRM vrne točke črte kot lng,lat, zemljevid pa jih potrebuje kot lat,lng
+        "geometry": [[lat, lng] for lng, lat in route["geometry"]["coordinates"]],
+    }
+
+
+def road_distances(points):
+    """Tabela cestnih razdalj v metrih med vsemi točkami ali None, če je storitev ne more vrniti"""
+    data = osrm("table", points, {"annotations": "distance"})
+    if data is None:
+        return None
+    distances = data["distances"]
+    # Brez cestne povezave med dvema točkama je razdalja None, takrat tabele ne uporabimo
+    return None if any(None in row for row in distances) else distances
 
 
 def suggested_order(tour):
     """Predlog vrstnega reda postankov: od skladišča vsakič najbližja še neobiskana stranka"""
     ensure_draft(tour)
-    position = warehouse_location()
-    if None in position:
+    warehouse = warehouse_location()
+    if None in warehouse:
         raise ValidationError(["Skladišče nima določene lokacije"])
 
     # Postanke iste stranke obravnavamo kot eno točko, zato v predlogu ostanejo zaporedni
@@ -243,17 +293,27 @@ def suggested_order(tour):
     # Stranke brez koordinat gredo na konec v obstoječem vrstnem redu
     not_located = [customer for customer in stops_by_customer if customer.lat is None]
 
+    # Točka 0 je skladišče, točka 1 prva stranka z lokacijo in tako naprej
+    points = [warehouse] + [(customer.lat, customer.lng) for customer in located]
+    # Najbližjo stranko iščemo po cestni razdalji; če OSRM ni dosegljiv, po zračni
+    roads = road_distances(points)
+
+    def distance(start, end):
+        return roads[start][end] if roads else distance_km(points[start], points[end])
+
     ordered = []
-    while located:
-        nearest = min(located, key=lambda customer: distance_km(position, (customer.lat, customer.lng)))
-        located.remove(nearest)
-        ordered.append(nearest)
-        position = (nearest.lat, nearest.lng)
+    position = 0
+    remaining = list(range(1, len(points)))
+    while remaining:
+        nearest = min(remaining, key=lambda index: distance(position, index))
+        remaining.remove(nearest)
+        ordered.append(located[nearest - 1])
+        position = nearest
     return [stop for customer in ordered + not_located for stop in stops_by_customer[customer]]
 
 
 def suggested_order_preview(tour):
-    """Predlagani vrstni red z razdaljo in trenutna razdalja za primerjavo, v bazo se nič ne shrani"""
+    """Predlagani vrstni red z razdaljo in potjo po cestah ter trenutna razdalja, v bazo se nič ne shrani"""
     stops = suggested_order(tour)
     current_distance_km = route_distance_km(tour.stops.select_related("order__customer").order_by("sequence"))
     # Številke predloga nastavimo samo v pomnilniku, da jih prikažeta seznam in zemljevid
@@ -263,13 +323,20 @@ def suggested_order_preview(tour):
         "stops": stops,
         "distance_km": route_distance_km(stops),
         "current_distance_km": current_distance_km,
+        # Pot po cestah za predlagani vrstni red, None, če OSRM ni dosegljiv
+        "road": road_route(stops),
     }
 
 
 @transaction.atomic
-def apply_suggested_order(tour):
-    """Shrani predlagani vrstni red; disponent lahko postanke potem še ročno premika"""
-    renumber_stops(tour, suggested_order(tour))
+def apply_suggested_order(tour, stop_ids):
+    """Shrani vrstni red iz predloga, ki ga je disponent videl; postanke lahko potem še ročno premika"""
+    ensure_draft(tour)
+    stops = {stop.id: stop for stop in tour.stops.all()}
+    # Predloga ne računamo znova, da se shrani točno prikazani vrstni red
+    if len(stop_ids) != len(stops) or set(stop_ids) != set(stops):
+        raise ValidationError(["Predlog ne ustreza več postankom ture, zahtevaj nov predlog"])
+    renumber_stops(tour, [stops[stop_id] for stop_id in stop_ids])
 
 
 def pluralize(count, forms):

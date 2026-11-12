@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import {
   addStop, applySuggestedOrder, changeVehicle, confirmTour, getOrders, getSuggestedOrder, getTour,
-  getTourOptions, moveStop, moveStopTo, removeStop, updateDeliveryNote, updateDriverNote,
+  getTourOptions, getTourRoute, moveStop, moveStopTo, removeStop, updateDeliveryNote, updateDriverNote,
 } from "../api/client.js";
 import DriverNoteInput from "../components/DriverNoteInput.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import TourLoad from "../components/TourLoad.jsx";
 import TourMap from "../components/TourMap.jsx";
-import { addDays, formatDate, formatNumber, pluralize } from "../format.js";
+import { addDays, formatDate, formatDuration, formatNumber, pluralize } from "../format.js";
 import { TOUR_STATUS } from "../labels.js";
 import { groupStops } from "../stopGroups.js";
 
@@ -30,6 +30,8 @@ export default function TourBuilderPage() {
   const [mapLarge, setMapLarge] = useState(false);
   // Predlog vrstnega reda, ki ga disponent še ni sprejel ali zavrgel
   const [suggestion, setSuggestion] = useState(null);
+  // Pot ture po cestah; null, dokler se nalaga ali če storitev ni dosegljiva
+  const [road, setRoad] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -43,6 +45,19 @@ export default function TourBuilderPage() {
       })
       .catch((err) => setError(err.message));
   }, [id]);
+
+  // Pot po cestah je odvisna samo od vrstnega reda postankov, zato jo naložimo znova, ko se ta spremeni
+  const stopOrder = tour ? tour.stops.map((stop) => stop.id).join(",") : "";
+  useEffect(() => {
+    // Odgovor za star vrstni red zavržemo, če je disponent medtem turo že spremenil
+    let current = true;
+    getTourRoute(id)
+      .then((data) => current && setRoad(data.road))
+      .catch(() => current && setRoad(null));
+    return () => {
+      current = false;
+    };
+  }, [id, stopOrder]);
 
   // Po dodajanju ali odstranjevanju prikažemo novo turo in osvežimo nerazporejena naročila
   async function update(action) {
@@ -121,6 +136,19 @@ export default function TourBuilderPage() {
     a.registration_number.localeCompare(b.registration_number),
   );
 
+  // Predlog primerjamo s trenutno potjo po cestah; brez nje primerjamo zračni razdalji
+  let suggestionSummary = "";
+  if (suggestion?.road && road) {
+    suggestionSummary =
+      `${formatNumber(suggestion.road.distance_km)} km po cestah, ` +
+      `${formatDuration(suggestion.road.duration_min)} vožnje ` +
+      `(trenutno ${formatNumber(road.distance_km)} km, ${formatDuration(road.duration_min)})`;
+  } else if (suggestion) {
+    suggestionSummary =
+      `${formatNumber(suggestion.distance_km)} km zračne razdalje ` +
+      `(trenutno ${formatNumber(suggestion.current_distance_km)} km)`;
+  }
+
   // Zemljevid se izriše iz postankov ture, zato se ob vsaki spremembi vrstnega reda takoj posodobi
   const mapCard = (
     <div className={mapLarge ? "card p-2 sticky-lg-top" : "card p-2"}>
@@ -132,6 +160,7 @@ export default function TourBuilderPage() {
         // Med predogledom predloga postankov ne odstranjujemo, ker zemljevid kaže predlagani vrstni red
         onRemoveStop={suggestion ? undefined : (stop) => update(() => removeStop(stop.id))}
         large={mapLarge}
+        roadLine={suggestion ? suggestion.road?.geometry : road?.geometry}
       />
       <div className="d-flex flex-wrap align-items-center gap-3 small text-muted mt-2 px-1">
         <span><span className="tp-map-legend" /> postanek ture</span>
@@ -208,7 +237,12 @@ export default function TourBuilderPage() {
       <div className="card-header d-flex align-items-center gap-2">
         <h2 className="h6 mb-0 flex-grow-1">
           Postanki ({tour.stops.length}){" "}
-          <span className="small text-muted fw-normal">· {formatNumber(tour.distance_km)} km zračne razdalje</span>
+          <span className="small text-muted fw-normal">
+            ·{" "}
+            {road
+              ? `${formatNumber(road.distance_km)} km po cestah · ${formatDuration(road.duration_min)} vožnje`
+              : `${formatNumber(tour.distance_km)} km zračne razdalje`}
+          </span>
         </h2>
         <button
           className="btn btn-sm btn-outline-primary"
@@ -221,8 +255,7 @@ export default function TourBuilderPage() {
       {suggestion && (
         <div className="alert alert-info small rounded-0 border-0 border-bottom mb-0">
           <div className="fw-medium mb-1">
-            Predlagani vrstni red: {formatNumber(suggestion.distance_km)} km zračne razdalje (trenutno{" "}
-            {formatNumber(suggestion.current_distance_km)} km)
+            Predlagani vrstni red: {suggestionSummary}
           </div>
           <ol className="mb-2 ps-3">
             {suggestion.stops.map((stop) => (
@@ -235,7 +268,10 @@ export default function TourBuilderPage() {
           <div className="d-flex gap-2">
             <button
               className="btn btn-sm btn-primary"
-              onClick={() => update(() => applySuggestedOrder(tour.id))}
+              // Shrani se točno prikazani vrstni red, zato pošljemo postanke iz predloga
+              onClick={() =>
+                update(() => applySuggestedOrder(tour.id, suggestion.stops.map((stop) => stop.id)))
+              }
             >
               Sprejmi predlog
             </button>

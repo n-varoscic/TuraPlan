@@ -31,7 +31,10 @@ function FitPoints({ points, large }) {
 
 // Zemljevid ture: skladišče, oštevilčeni postanki in črta po vrstnem redu dostave
 // Stran Sestavljanje ture doda še nerazporejena naročila in gumba za dodajanje v turo in odstranjevanje iz nje
-export default function TourMap({ warehouse, stops, orders = [], onAddOrder, onRemoveStop, large = false }) {
+// Če je podana črta po cestah (roadLine), jo narišemo namesto ravnih črt med postanki
+export default function TourMap({
+  warehouse, stops, orders = [], onAddOrder, onRemoveStop, large = false, roadLine = null,
+}) {
   const located = stops.filter((stop) => stop.lat !== null && stop.lng !== null);
   const missing = stops.filter((stop) => stop.lat === null || stop.lng === null);
   const hasWarehouse = warehouse.lat !== null && warehouse.lng !== null;
@@ -62,7 +65,7 @@ export default function TourMap({ warehouse, stops, orders = [], onAddOrder, onR
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           />
           <FitPoints points={visible} large={large} />
-          <Polyline positions={points} pathOptions={{ color: "#4f8a63", weight: 3 }} />
+          <Polyline positions={roadLine ?? points} pathOptions={{ color: "#4f8a63", weight: 3 }} />
           {hasWarehouse && (
             <Marker position={[warehouse.lat, warehouse.lng]} icon={markerIcon("S", "tp-map-warehouse")}>
               <Popup>

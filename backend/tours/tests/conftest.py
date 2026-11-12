@@ -16,6 +16,12 @@ def no_nominatim(monkeypatch):
     monkeypatch.setattr("tours.services.geocode", lambda address: None)
 
 
+@pytest.fixture(autouse=True)
+def no_osrm(monkeypatch):
+    # Testi nikoli ne kličejo prave storitve OSRM; brez zamenjave poti po cestah ni
+    monkeypatch.setattr("tours.services.osrm", lambda service, points, params: None)
+
+
 @pytest.fixture
 def seeded(db):
     # Testni podatki: včeraj zaključena, danes v dostavi, jutri potrjena in osnutek

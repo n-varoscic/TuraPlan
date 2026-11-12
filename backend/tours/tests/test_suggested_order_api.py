@@ -41,6 +41,10 @@ def suggestion(client, tour):
     return client.get(f"/api/tours/{tour.id}/suggested-order/")
 
 
+def accept(client, tour, stop_ids):
+    return client.post(f"/api/tours/{tour.id}/suggested-order/", {"stop_ids": stop_ids}, format="json")
+
+
 def test_distance_between_points_is_air_distance():
     # Ena stopinja zemljepisne širine je približno 111 km
     assert distance_km((46, 15), (47, 15)) == pytest.approx(111.2, abs=0.1)
@@ -69,7 +73,8 @@ def test_suggestion_is_not_saved_until_accepted(dispatcher_client, line_tour):
 
 
 def test_accepted_suggestion_is_saved_and_stops_can_still_be_moved(dispatcher_client, line_tour):
-    response = dispatcher_client.post(f"/api/tours/{line_tour.id}/suggested-order/")
+    stop_ids = [stop["id"] for stop in suggestion(dispatcher_client, line_tour).data["stops"]]
+    response = accept(dispatcher_client, line_tour, stop_ids)
     assert response.status_code == 200
     assert numbers(response.data["stops"]) == ["N-014", "N-024", "N-015", "N-016"]
     last = response.data["stops"][3]["id"]
@@ -97,7 +102,7 @@ def test_suggestion_is_only_for_draft_tour(dispatcher_client, tomorrow):
     confirmed = Tour.objects.get(dispatch_date=tomorrow, status=Tour.Status.CONFIRMED)
     for response in [
         suggestion(dispatcher_client, confirmed),
-        dispatcher_client.post(f"/api/tours/{confirmed.id}/suggested-order/"),
+        accept(dispatcher_client, confirmed, []),
     ]:
         assert response.status_code == 400
         assert response.data == ["Turo je mogoče spreminjati samo v osnutku"]
