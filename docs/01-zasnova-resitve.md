@@ -30,10 +30,10 @@ Tipičen potek:
 
 1. **Naročila** – TuraPlan prevzame prejeta naročila strank iz ERP sistema podjetja (v projektu jih nadomestijo testni podatki). Vsako naročilo ima datum prejema, rok odpreme, težo (kg) in število palet. Število palet določi skladišče, ki blago pripravi.
 2. **Sestavljanje ture** – disponent ustvari turo z datumom odpreme (danes ali vnaprej), izbere vozilo in voznika ter vanjo doda nerazporejena naročila. Sistem sproti prikazuje zasedenost vozila (kg in palete) in opozori, če je kapaciteta presežena ali če bi naročilo odšlo po roku odpreme.
-3. **Vrstni red in opombe** – disponent razvrsti postanke in dopiše opombe za voznika. (Kasneje: sistem predlaga vrstni red glede na razdalje, tura je prikazana na zemljevidu.)
+3. **Vrstni red in opombe** – disponent razvrsti postanke in dopiše opombe za voznika. (Dodatno, izven MVP: sistem predlaga vrstni red glede na razdalje, tura je prikazana na zemljevidu.)
 4. **Potrditev** – disponent turo potrdi. Sistem potrditev dovoli samo, če ima tura vozilo, voznika, vsaj en postanek in kapaciteta ni presežena. Potrjena tura je zaklenjena za urejanje.
 5. **Tura pri vozniku** – potrjena tura se prikaže vozniku v aplikaciji (na telefonu): vrstni red postankov, stranka, naslov, telefon, palete, teža in opombe. Tiskanje ni potrebno.
-6. **Izvedba** – voznik na dan odpreme turo začne in za vsak postanek označi `DOSTAVLJENO` ali `NI DOSTAVLJENO` (z obveznim razlogom). Tura lahko traja tudi več dni (oddaljene stranke). Disponent v aplikaciji sproti vidi, kateri postanki so že dostavljeni. Ko so označeni vsi postanki, se tura samodejno zaključi.
+6. **Izvedba** – voznik na dan odpreme turo začne in za vsak postanek označi `DELIVERED` ali `NOT_DELIVERED` (z obveznim razlogom). Tura lahko traja tudi več dni (oddaljene stranke). Disponent v aplikaciji sproti vidi, kateri postanki so že dostavljeni. Ko so označeni vsi postanki, voznik turo zaključi.
 7. **Ponovno planiranje** – nedostavljena naročila se vrnejo na seznam nerazporejenih naročil, disponent pa jih uvrsti v novo turo.
 
 ## Ključni pojmi
@@ -42,7 +42,7 @@ Tipičen potek:
 |---|---|
 | Stranka | poslovni kupec z naslovom dostave (in koordinatami za zemljevid) |
 | Naročilo | blago za eno stranko; ima datum prejema, rok odpreme, težo (kg) in število palet |
-| Regija | območje dostave stranke (npr. »Štajerska«, »Nemčija – Bavarska«), po katerem disponent združuje naročila za isto vozilo |
+| Regija | območje dostave stranke (npr. »Podravska«, »Gorenjska«), po katerem disponent združuje naročila za isto vozilo |
 | Rok odpreme | najkasnejši dan, ko mora blago oditi iz skladišča |
 | Paletno mesto | prostor za eno EUR paleto (1,2 × 0,8 m) v vozilu; kombi ima npr. 4 paletna mesta, tovornjak 16 |
 | Palete naročila | koliko paletnih mest zasede naročilo, na 0,25 natančno (npr. 0,25 = četrt palete). Podatek poda skladišče: manjša naročila lahko združi na skupno paleto, zato zasedejo le del palete. |

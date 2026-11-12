@@ -19,6 +19,7 @@
 | US-13 | F-13 Izkoriščenost vozil | Disponent |  |
 | US-14 | F-14 Upravljanje uporabniških dostopov | Administrator |  |
 | US-15 | F-14 Evidenca vozil | Administrator |  |
+| US-16 | F-15 Pot ture po cestah | Disponent |  |
 
 ---
 
@@ -50,7 +51,7 @@
 
 1. Seznam tur je privzeto razvrščen po datumu odpreme od današnjega dne naprej in ga je mogoče filtrirati po datumu odpreme in statusu.
 2. Pri vsaki turi so prikazani datum odpreme, vozilo, voznik, število postankov, teža / nosilnost, palete / paletna mesta in status.
-3. Pri turah v statusu `V_DOSTAVI` je prikazan napredek v obliki »7 / 12 dostavljeno, 1 nedostavljeno«.
+3. Pri turah v statusu `IN_DELIVERY` je prikazan napredek v obliki »7 / 12 dostavljeno, 1 nedostavljeno«.
 4. Tura z vsaj enim nedostavljenim postankom je v seznamu označena z opozorilno oznako.
 5. Ob kliku na turo disponent vidi vse postanke z rezultatom, časom označitve in razlogom nedostave.
 
@@ -66,10 +67,10 @@
 **Sprejemni kriteriji:**
 
 1. Disponent lahko izbere samo aktivno vozilo in aktivnega voznika, ki na izbrani datum odpreme še nimata ture; zasedena vozila in vozniki v izbirnem seznamu niso na voljo.
-2. Seznam naročil za dodajanje vsebuje samo naročila s statusom `NOVO` ali `NEDOSTAVLJENO`, je razvrščen po roku odpreme (najzgodnejši najprej) in ga je mogoče filtrirati po regiji stranke.
+2. Seznam naročil za dodajanje vsebuje samo naročila s statusom `NEW` ali `NOT_DELIVERED`, je razvrščen po roku odpreme (najzgodnejši najprej) in ga je mogoče filtrirati po regiji stranke in po roku odpreme (do datuma ture, do 3 dni po datumu ture, vsi roki).
 3. Naročila, katerih datum prejema je kasnejši od datuma odpreme ture, niso na voljo za dodajanje.
 4. Če je datum odpreme ture kasnejši od roka odpreme naročila, je pri naročilu prikazano opozorilo »po roku odpreme«, dodajanje pa je dovoljeno.
-5. Dodano naročilo dobi status `PLANIRANO` in izgine s seznama nerazporejenih naročil; ko ga disponent odstrani iz ture, se vrne v status `NOVO`.
+5. Dodano naročilo dobi status `PLANNED` in izgine s seznama nerazporejenih naročil; ko ga disponent odstrani iz ture, se vrne v status `NEW`.
 
 ---
 
@@ -99,9 +100,9 @@
 
 **Sprejemni kriteriji:**
 
-1. Postanek je mogoče premakniti za eno mesto gor ali dol; zaporedne številke se po vsakem premiku preštevilčijo od 1 naprej brez lukenj in podvajanj.
+1. Postanek je mogoče premakniti za eno mesto gor ali dol ali ga z miško povleči na poljubno mesto; zaporedne številke se po vsakem premiku preštevilčijo od 1 naprej brez lukenj in podvajanj.
 2. Pri postanku je mogoče vnesti opombo za voznika z največ 300 znaki; daljše opombe sistem ne shrani in prikaže, za koliko znakov je predolga.
-3. Stalna opomba stranke (npr. »zadnji vhod«) je samodejno prikazana pri vsakem postanku te stranke.
+3. Stalna opomba stranke (npr. »zadnji vhod«) je samodejno prikazana pri vsakem postanku te stranke; disponent lahko opombo pri postanku shrani kot stalno opombo stranke ali stalno opombo odstrani.
 4. Ko disponent doda naročilo stranke, ki že ima postanek v turi, ga sistem samodejno uvrsti takoj za zadnji postanek te stranke.
 5. Zaporedni postanki iste stranke so prikazani z enako barvo ozadja in oznako števila naročil (npr. »2 naročili«); če postanki iste stranke niso zaporedni, sistem prikaže opozorilo »postanki iste stranke niso zaporedni«.
 
@@ -117,9 +118,9 @@
 **Sprejemni kriteriji:**
 
 1. Potrditev je mogoča samo, če ima tura vozilo, voznika, vsaj en postanek in kapaciteta ni presežena; sicer sistem prikaže seznam vseh neizpolnjenih pogojev.
-2. Po potrditvi ima tura status `POTRJENA`, sistem zabeleži čas potrditve, tura pa postane vidna dodeljenemu vozniku.
+2. Po potrditvi ima tura status `CONFIRMED`, sistem zabeleži čas potrditve, tura pa postane vidna dodeljenemu vozniku.
 3. Pri potrjeni turi ni mogoče dodajati ali odstranjevati naročil, spreminjati vrstnega reda postankov ali opomb.
-4. Disponent lahko potrjeno turo vrne v `OSNUTEK`, dokler je voznik ni začel; pri turi v statusu `V_DOSTAVI` ta možnost ni na voljo.
+4. Disponent lahko potrjeno turo vrne v `DRAFT`, dokler je voznik ni začel; pri turi v statusu `IN_DELIVERY` ta možnost ni na voljo.
 
 ---
 
@@ -134,9 +135,9 @@
 
 1. Voznik vidi samo potrjene ture, v katerih je dodeljen kot voznik; ture drugih voznikov in ture v osnutku mu niso dostopne.
 2. Postanki so prikazani po vrstnem redu s stranko, naslovom, telefonom, številko naročila, paletami, težo in opombami; stran je uporabna na zaslonu širine 360 px brez vodoravnega drsenja.
-3. Gumb »Začni turo« je na voljo najprej na datum odpreme in samo, če voznik nima druge ture v statusu `V_DOSTAVI`.
-4. Pri označitvi »Ni dostavljeno« je vnos razloga obvezen; naročilo dobi status `NEDOSTAVLJENO` in se pojavi med nerazporejenimi naročili disponenta.
-5. Ko voznik označi zadnji postanek, tura samodejno preide v status `ZAKLJUCENA`.
+3. Gumb »Začni turo« je na voljo najprej na datum odpreme in samo, če voznik nima druge ture v statusu `IN_DELIVERY`.
+4. Pri označitvi »Ni dostavljeno« je vnos razloga obvezen; naročilo dobi status `NOT_DELIVERED` in se pojavi med nerazporejenimi naročili disponenta.
+5. Dokler je tura v dostavi, lahko voznik oznako postanka popravi. Ko so označeni vsi postanki, voznik turo zaključi in tura preide v `COMPLETED`; oznak potem ni več mogoče spreminjati.
 
 ---
 
@@ -149,7 +150,7 @@
 
 **Sprejemni kriteriji:**
 
-1. Iskalno polje je dostopno na vseh straneh disponenta.
+1. Iskalno polje je na strani Seznam tur v vrstici s filtroma datuma odpreme in statusa ter na strani z zadetki iskanja.
 2. Iskanje po številki naročila vrne točno ujemanje; iskanje po nazivu stranke vrne delna ujemanja od 3 znakov naprej in ne razlikuje velikih in malih črk.
 3. Pri vsakem zadetku so prikazani številka naročila, stranka, rok odpreme, status in – če je naročilo v turi – datum odpreme ture in voznik.
 4. Pri nedostavljenem naročilu je prikazan razlog zadnje nedostave.
@@ -166,7 +167,7 @@
 
 **Sprejemni kriteriji:**
 
-1. Prikazana so samo naročila s statusom `NOVO` ali `NEDOSTAVLJENO`, združena po regiji stranke.
+1. Prikazana so samo naročila s statusom `NEW` ali `NOT_DELIVERED`, združena po regiji stranke.
 2. Za vsako regijo so prikazani število naročil, skupna teža (kg) in skupno število palet.
 3. Naročila, katerih rok odpreme je pred današnjim dnem, so označena rdeče z oznako »zamuda«.
 4. Nedostavljena naročila imajo oznako »nedostavljeno« in razlog zadnje nedostave.
@@ -187,6 +188,10 @@
 3. Ob kliku na oznako se prikažejo naziv stranke, naslov in številka naročila.
 4. Postanki strank brez koordinat niso na zemljevidu; pod zemljevidom je izpisano število in seznam postankov brez lokacije.
 5. Enak zemljevid vidi tudi voznik v podrobnostih svoje ture.
+6. Na strani Sestavljanje ture lahko disponent zemljevid poveča čez večino strani; seznama naročil in postankov se pri tem zožita in ostaneta ob zemljevidu.
+7. Na zemljevidu strani Sestavljanje ture so prikazana tudi nerazporejena naročila, ki ustrezajo izbranima filtroma regije in roka odpreme; naročila po roku odpreme imajo rdečo oznako.
+8. Ob kliku na oznako nerazporejenega naročila se prikažejo stranka, teža, palete in rok odpreme ter gumb »Dodaj v turo«; naročilo se doda na konec ture po enakih pravilih kot s seznama.
+9. Ob kliku na oznako postanka je na strani Sestavljanje ture pri vsakem naročilu gumb »Odstrani iz ture«.
 
 ---
 
@@ -216,7 +221,7 @@
 
 **Sprejemni kriteriji:**
 
-1. Predlog vrstnega reda je mogoče zahtevati samo pri turi v statusu `OSNUTEK`.
+1. Predlog vrstnega reda je mogoče zahtevati samo pri turi v statusu `DRAFT`.
 2. Predlog se začne pri skladišču in vsakič izbere najbližji še neobiskani postanek po zračni razdalji.
 3. Postanki iste stranke v predlogu ostanejo zaporedni.
 4. Postanki strank brez koordinat so postavljeni na konec, v obstoječem medsebojnem vrstnem redu.
@@ -234,7 +239,7 @@
 **Sprejemni kriteriji:**
 
 1. Za izbrano obdobje (privzeto zadnjih 7 dni) je za vsako vozilo in vsak dan s turo prikazana izkoriščenost nosilnosti v % in paletnih mest v %.
-2. Upoštevane so samo ture s statusom `POTRJENA`, `V_DOSTAVI` ali `ZAKLJUCENA`; osnutki niso upoštevani.
+2. Upoštevane so samo ture s statusom `CONFIRMED`, `IN_DELIVERY` ali `COMPLETED`; osnutki niso upoštevani.
 3. Izkoriščenost pod 50 % je posebej označena.
 4. Za vsako vozilo je prikazana povprečna izkoriščenost v izbranem obdobju.
 5. Pregled je dostopen disponentu in administratorju, vozniku ne.
@@ -250,7 +255,7 @@
 
 **Sprejemni kriteriji:**
 
-1. Pri novem uporabniku sta obvezni e-pošta, ki še ne obstaja v sistemu, in vloga (`DISPONENT`, `VOZNIK` ali `ADMIN`).
+1. Pri novem uporabniku sta obvezni e-pošta, ki še ne obstaja v sistemu, in vloga (`DISPATCHER`, `DRIVER` ali `ADMIN`).
 2. Ko administrator uporabnika deaktivira (npr. ob odpovedi), se ta ne more več prijaviti, njegova obstoječa prijava pa preneha veljati ob naslednji zahtevi; njegove pretekle ture ostanejo nespremenjene.
 3. Če ima deaktivirani voznik potrjene ture, ki se še niso začele, sistem administratorja na to opozori in jih navede, da jim disponent lahko dodeli drugega voznika.
 4. Sprememba vloge začne veljati ob naslednji zahtevi uporabnika (npr. disponent, ki postane voznik, nima več dostopa do sestavljanja tur).
@@ -267,8 +272,25 @@
 
 **Sprejemni kriteriji:**
 
-1. Pri vozilu so obvezni registrska številka, ki še ne obstaja v sistemu, tip (`KOMBI` ali `TOVORNJAK`), nosilnost, večja od 0 kg, in število paletnih mest, večje od 0.
+1. Pri vozilu so obvezni registrska številka, ki še ne obstaja v sistemu, tip (`VAN` ali `TRUCK`), nosilnost, večja od 0 kg, in število paletnih mest, večje od 0.
 2. Vozila, ki je že bilo v turi, ni mogoče izbrisati, mogoče ga je le deaktivirati.
 3. Neaktivno vozilo ni na voljo pri izbiri vozila za novo turo; obstoječe ture s tem vozilom ostanejo nespremenjene.
-4. Sprememba nosilnosti ali števila paletnih mest vpliva na preverjanje kapacitete samo pri turah v statusu `OSNUTEK`; potrjene ture se ne spremenijo.
+4. Sprememba nosilnosti ali števila paletnih mest vpliva na preverjanje kapacitete samo pri turah v statusu `DRAFT`; potrjene ture se ne spremenijo.
 5. Če ima deaktivirano vozilo potrjene ture, ki se še niso začele, sistem administratorja na to opozori in jih navede.
+
+---
+
+## US-16 – Pot ture po cestah
+
+- **Funkcionalnost:** F-15
+- **Vloga:** Disponent
+
+**Uporabniška zgodba:** Kot disponent želim videti pot ture po cestah z razdaljo in časom vožnje, da realno ocenim, koliko časa bo voznik potreboval, in da predlog vrstnega reda upošteva dejanske ceste.
+
+**Sprejemni kriteriji:**
+
+1. Na zemljevidu strani Sestavljanje ture in Podrobnosti ture črta od skladišča po postankih sledi cestam.
+2. Ob postankih sta prikazana skupna cestna razdalja v km in čas vožnje; po vsaki spremembi vrstnega reda se posodobita.
+3. Predlog vrstnega reda (US-12) najbližji naslednji postanek izbere po cestni razdalji; v predogledu sta cestna razdalja in čas vožnje predloga ter trenutne ture.
+4. Ob sprejetju se shrani točno tisti vrstni red, ki ga je disponent videl v predogledu.
+5. Če storitev za poti po cestah ni dosegljiva, aplikacija deluje naprej: črta je ravna, prikazana je zračna razdalja, predlog pa se izračuna po zračni razdalji.
