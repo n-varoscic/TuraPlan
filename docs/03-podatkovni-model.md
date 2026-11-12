@@ -1,12 +1,12 @@
 # 03 – Podatkovni model
 
-Rešitev uporablja **relacijsko podatkovno bazo (SQLite)**. Tabele se ustvarijo iz Django modelov z migracijami. Imena polj so zapisana brez šumnikov, ker se uporabljajo neposredno v kodi.
+Rešitev uporablja **relacijsko podatkovno bazo (SQLite)**. Tabele se ustvarijo iz Django modelov z migracijami. Imena tabel, polj in statusov so zapisana v angleščini, ker se uporabljajo neposredno v kodi, opisi pa so v slovenščini. Uporabniku so statusi prikazani s slovenskimi nazivi (npr. `DRAFT` kot »Osnutek«).
 
 Oznake: **PK** – primarni ključ, **FK** – tuji ključ (povezava na drugo tabelo), **UK** – enolična vrednost.
 
 ## Entitete
 
-### Uporabnik (`Uporabnik`)
+### Uporabnik (`User`)
 
 Razširja vgrajenega Django uporabnika, zato shranjevanje gesel in preverjanje prijave delujeta z vgrajenimi mehanizmi.
 
@@ -15,210 +15,214 @@ Razširja vgrajenega Django uporabnika, zato shranjevanje gesel in preverjanje p
 | `id` | celo število, PK | |
 | `email` | besedilo, UK | uporablja se za prijavo |
 | `password` | besedilo | zgoščeno geslo |
-| `ime`, `priimek` | besedilo | |
-| `telefon` | besedilo, neobvezno | |
-| `vloga` | izbira | `DISPONENT`, `VOZNIK`, `ADMIN` |
+| `first_name`, `last_name` | besedilo | ime in priimek |
+| `phone` | besedilo, neobvezno | telefon |
+| `role` | izbira | `DISPATCHER` (disponent), `DRIVER` (voznik), `ADMIN` (administrator) |
 | `is_active` | logična vrednost | deaktiviran uporabnik se ne more prijaviti |
 
-### Stranka (`Stranka`)
+### Stranka (`Customer`)
 
 | Polje | Tip | Opis |
 |---|---|---|
 | `id` | celo število, PK | |
-| `sifra` | besedilo, UK | šifra stranke (kot v ERP) |
-| `naziv` | besedilo | npr. Pekarna Zrno |
-| `naslov`, `posta`, `kraj` | besedilo | naslov dostave |
-| `regija` | besedilo | območje dostave, npr. »Štajerska«, »Nemčija – Bavarska« |
+| `code` | besedilo, UK | šifra stranke (kot v ERP) |
+| `name` | besedilo | naziv, npr. Pekarna Zrno |
+| `address`, `postal_code`, `city` | besedilo | naslov dostave (naslov, pošta, kraj) |
+| `region` | besedilo | območje dostave, npr. »Podravska«, »Gorenjska« |
 | `lat`, `lng` | decimalno število, neobvezno | koordinate za zemljevid in predlog vrstnega reda |
-| `kontakt`, `telefon` | besedilo, neobvezno | kontaktna oseba za dostavo |
-| `opomba_dostava` | besedilo, neobvezno | stalna opomba, npr. »zadnji vhod, zvoniti 2x« |
-| `aktivna` | logična vrednost | |
+| `geocoded_address` | besedilo, neobvezno | naslov, za katerega veljata `lat` in `lng`; če se naslov stranke spremeni, sistem koordinate ob naslednjem dodajanju naročila v turo poišče znova |
+| `contact_name`, `phone` | besedilo, neobvezno | kontaktna oseba za dostavo |
+| `delivery_note` | besedilo, neobvezno | stalna opomba, npr. »zadnji vhod, zvoniti 2x« |
+| `is_active` | logična vrednost | ali je stranka aktivna |
 
-### Vozilo (`Vozilo`)
-
-| Polje | Tip | Opis |
-|---|---|---|
-| `id` | celo število, PK | |
-| `registrska_st` | besedilo, UK | npr. `MB AB-123` |
-| `tip` | izbira | `KOMBI`, `TOVORNJAK` |
-| `nosilnost_kg` | celo število > 0 | največja dovoljena teža tovora, npr. kombi 1.200, tovornjak 6.000 |
-| `paletna_mesta` | celo število > 0 | število EUR palet, kombi 4, tovornjak 16 |
-| `aktivno` | logična vrednost | neaktivnega vozila ni mogoče izbrati za turo |
-
-### Naročilo (`Narocilo`)
+### Vozilo (`Vehicle`)
 
 | Polje | Tip | Opis |
 |---|---|---|
 | `id` | celo število, PK | |
-| `stevilka` | besedilo, UK | številka naročila (kot v ERP) |
-| `stranka_id` | FK → Stranka | |
-| `datum_prejema` | datum | kdaj je bilo naročilo prejeto |
-| `rok_odpreme` | datum | najkasnejši dan, ko mora blago oditi iz skladišča |
-| `teza_kg` | decimalno število > 0 | |
-| `palete` | decimalno število > 0 | število paletnih mest, ki jih zasede naročilo; na 0,25 natančno (npr. 0,25 / 0,5 / 1 / 2,75); poda ga skladišče |
-| `opis` | besedilo, neobvezno | npr. »moka T-500 40 vreč, sir 12 kg« |
-| `status` | izbira | `NOVO`, `PLANIRANO`, `DOSTAVLJENO`, `NEDOSTAVLJENO` |
+| `registration_number` | besedilo, UK | registrska številka, npr. `MB AB-123` |
+| `type` | izbira | `VAN` (kombi), `TRUCK` (tovornjak) |
+| `max_load_kg` | celo število > 0 | največja dovoljena teža tovora, npr. kombi 1.200, tovornjak 6.000 |
+| `pallet_spaces` | celo število > 0 | število EUR palet, kombi 4, tovornjak 16 |
+| `is_active` | logična vrednost | neaktivnega vozila ni mogoče izbrati za turo |
 
-### Tura (`Tura`)
+### Naročilo (`Order`)
 
 | Polje | Tip | Opis |
 |---|---|---|
 | `id` | celo število, PK | |
-| `datum_odpreme` | datum | dan, ko tura odide iz skladišča (tura lahko traja več dni) |
-| `vozilo_id` | FK → Vozilo | |
-| `voznik_id` | FK → Uporabnik (vloga `VOZNIK`) | |
-| `ustvaril_id` | FK → Uporabnik (vloga `DISPONENT`) | |
-| `status` | izbira | `OSNUTEK`, `POTRJENA`, `V_DOSTAVI`, `ZAKLJUCENA` |
-| `opomba` | besedilo, neobvezno | splošna opomba za celo turo |
-| `potrjeno_ob`, `zacetek_ob`, `zakljuceno_ob` | datum in čas, neobvezno | kdaj je tura prešla v posamezno stanje |
+| `number` | besedilo, UK | številka naročila (kot v ERP) |
+| `customer_id` | FK → Customer | |
+| `received_date` | datum | kdaj je bilo naročilo prejeto |
+| `dispatch_deadline` | datum | rok odpreme: najkasnejši dan, ko mora blago oditi iz skladišča |
+| `weight_kg` | decimalno število > 0 | teža |
+| `pallets` | decimalno število > 0 | število paletnih mest, ki jih zasede naročilo; na 0,25 natančno (npr. 0,25 / 0,5 / 1 / 2,75); poda ga skladišče |
+| `description` | besedilo, neobvezno | npr. »moka T-500 40 vreč, sir 12 kg« |
+| `status` | izbira | `NEW` (novo), `PLANNED` (planirano), `DELIVERED` (dostavljeno), `NOT_DELIVERED` (nedostavljeno) |
 
-Kombinaciji (`datum_odpreme`, `vozilo_id`) in (`datum_odpreme`, `voznik_id`) sta enolični – vozilo in voznik imata na isti datum odpreme največ eno turo.
+### Tura (`Tour`)
 
-### Postanek (`Postanek`)
+| Polje | Tip | Opis |
+|---|---|---|
+| `id` | celo število, PK | |
+| `dispatch_date` | datum | datum odpreme: dan, ko tura odide iz skladišča (tura lahko traja več dni) |
+| `vehicle_id` | FK → Vehicle | |
+| `driver_id` | FK → User (vloga `DRIVER`) | |
+| `created_by_id` | FK → User (vloga `DISPATCHER`) | |
+| `status` | izbira | `DRAFT` (osnutek), `CONFIRMED` (potrjena), `IN_DELIVERY` (v dostavi), `COMPLETED` (zaključena) |
+| `note` | besedilo, neobvezno | splošna opomba za celo turo |
+| `confirmed_at`, `started_at`, `completed_at` | datum in čas, neobvezno | kdaj je tura prešla v posamezno stanje |
+
+Kombinaciji (`dispatch_date`, `vehicle_id`) in (`dispatch_date`, `driver_id`) sta enolični – vozilo in voznik imata na isti datum odpreme največ eno turo.
+
+### Postanek (`Stop`)
 
 Povezuje turo in naročilo ter hrani vrstni red in rezultat dostave.
 
 | Polje | Tip | Opis |
 |---|---|---|
 | `id` | celo število, PK | |
-| `tura_id` | FK → Tura | |
-| `narocilo_id` | FK → Narocilo | |
-| `zaporedje` | celo število ≥ 1 | vrstni red v turi; (`tura_id`, `zaporedje`) je enolično |
-| `opomba_vozniku` | besedilo, neobvezno | največ 300 znakov |
-| `rezultat` | izbira | `CAKA`, `DOSTAVLJENO`, `NI_DOSTAVLJENO` |
-| `razlog` | besedilo, neobvezno | obvezno, če je `rezultat = NI_DOSTAVLJENO` |
-| `oznaceno_ob` | datum in čas, neobvezno | kdaj je voznik označil rezultat |
+| `tour_id` | FK → Tour | |
+| `order_id` | FK → Order | |
+| `sequence` | celo število ≥ 1 | vrstni red v turi; (`tour_id`, `sequence`) je enolično |
+| `driver_note` | besedilo, neobvezno | opomba za voznika, največ 300 znakov |
+| `result` | izbira | `PENDING` (čaka), `DELIVERED` (dostavljeno), `NOT_DELIVERED` (ni dostavljeno) |
+| `reason` | besedilo, neobvezno | razlog nedostave; obvezno, če je `result = NOT_DELIVERED` |
+| `marked_at` | datum in čas, neobvezno | kdaj je voznik označil rezultat |
 
-### Nastavitve (`Nastavitve`)
+### Nastavitve (`Settings`)
 
 Tabela z **eno samo vrstico** sistemskih nastavitev, ki jih ureja administrator. Z drugimi tabelami ni povezana; njene vrednosti uporablja poslovna logika (začetna točka za predlog vrstnega reda in zemljevid).
 
 | Polje | Tip | Privzeta vrednost |
 |---|---|---|
 | `id` | celo število, PK | vedno 1 |
-| `skladisce_naslov` | besedilo | naslov skladišča |
-| `skladisce_lat`, `skladisce_lng` | decimalno, neobvezno | koordinate skladišča |
+| `warehouse_address` | besedilo | naslov skladišča |
+| `warehouse_lat`, `warehouse_lng` | decimalno, neobvezno | koordinate skladišča |
 
 ## Povezave med entitetami
 
 | Povezava | Kardinalnost | Pomen |
 |---|---|---|
-| Stranka → Naročilo | 1 : N | stranka ima več naročil |
-| Vozilo → Tura | 1 : N | vozilo vozi več tur |
-| Uporabnik (voznik) → Tura | 1 : N | voznik vozi več tur |
-| Uporabnik (disponent) → Tura | 1 : N | disponent ustvari več tur |
-| Tura → Postanek | 1 : N | tura ima več postankov |
-| Naročilo → Postanek | 1 : N | naročilo je lahko skozi čas v več postankih (npr. prvič nedostavljeno, drugič dostavljeno), a hkrati v največ eni aktivni turi |
+| Customer → Order | 1 : N | stranka ima več naročil |
+| Vehicle → Tour | 1 : N | vozilo vozi več tur |
+| User (voznik) → Tour | 1 : N | voznik vozi več tur |
+| User (disponent) → Tour | 1 : N | disponent ustvari več tur |
+| Tour → Stop | 1 : N | tura ima več postankov |
+| Order → Stop | 1 : N | naročilo je lahko skozi čas v več postankih (npr. prvič nedostavljeno, drugič dostavljeno), a hkrati v največ eni aktivni turi |
 
 ## Osnutek podatkovnega modela (ER diagram)
 
-Branje povezav: `||` = natanko ena, `o{` = nič ali več. Primer: `STRANKA ||--o{ NAROCILO` pomeni, da ima stranka nič ali več naročil, vsako naročilo pa pripada natanko eni stranki.
+Branje povezav: `||` = natanko ena, `o{` = nič ali več. Primer: `CUSTOMER ||--o{ ORDER` pomeni, da ima stranka nič ali več naročil, vsako naročilo pa pripada natanko eni stranki.
 
 ```mermaid
 erDiagram
-    STRANKA ||--o{ NAROCILO : "naroči"
-    NAROCILO ||--o{ POSTANEK : "je v"
-    TURA ||--o{ POSTANEK : "vsebuje"
-    VOZILO ||--o{ TURA : "izvaja"
-    UPORABNIK ||--o{ TURA : "vozi (voznik)"
-    UPORABNIK ||--o{ TURA : "ustvari (disponent)"
+    CUSTOMER ||--o{ ORDER : "naroči"
+    ORDER ||--o{ STOP : "je v"
+    TOUR ||--o{ STOP : "vsebuje"
+    VEHICLE ||--o{ TOUR : "izvaja"
+    USER ||--o{ TOUR : "vozi (voznik)"
+    USER ||--o{ TOUR : "ustvari (disponent)"
 
-    UPORABNIK {
+    USER {
         int id PK
         string email UK
-        string ime
-        string priimek
-        string vloga
+        string first_name
+        string last_name
+        string role
         bool is_active
     }
-    STRANKA {
+    CUSTOMER {
         int id PK
-        string sifra UK
-        string naziv
-        string naslov
-        string kraj
-        string regija
+        string code UK
+        string name
+        string address
+        string city
+        string region
         decimal lat
         decimal lng
-        string opomba_dostava
+        string geocoded_address
+        string delivery_note
     }
-    VOZILO {
+    VEHICLE {
         int id PK
-        string registrska_st UK
-        string tip
-        int nosilnost_kg
-        int paletna_mesta
-        bool aktivno
+        string registration_number UK
+        string type
+        int max_load_kg
+        int pallet_spaces
+        bool is_active
     }
-    NAROCILO {
+    ORDER {
         int id PK
-        string stevilka UK
-        int stranka_id FK
-        date datum_prejema
-        date rok_odpreme
-        decimal teza_kg
-        decimal palete
+        string number UK
+        int customer_id FK
+        date received_date
+        date dispatch_deadline
+        decimal weight_kg
+        decimal pallets
         string status
     }
-    TURA {
+    TOUR {
         int id PK
-        date datum_odpreme
-        int vozilo_id FK
-        int voznik_id FK
-        int ustvaril_id FK
+        date dispatch_date
+        int vehicle_id FK
+        int driver_id FK
+        int created_by_id FK
         string status
     }
-    POSTANEK {
+    STOP {
         int id PK
-        int tura_id FK
-        int narocilo_id FK
-        int zaporedje
-        string opomba_vozniku
-        string rezultat
-        string razlog
+        int tour_id FK
+        int order_id FK
+        int sequence
+        string driver_note
+        string result
+        string reason
     }
-    NASTAVITVE {
+    SETTINGS {
         int id PK
-        string skladisce_naslov
-        decimal skladisce_lat
-        decimal skladisce_lng
+        string warehouse_address
+        decimal warehouse_lat
+        decimal warehouse_lng
     }
 ```
 
-`NASTAVITVE` je v diagramu brez povezav, ker gre za samostojno tabelo z eno vrstico.
+`SETTINGS` je v diagramu brez povezav, ker gre za samostojno tabelo z eno vrstico.
 
 ## Življenjski cikel ture
 
 ```mermaid
 stateDiagram-v2
-    [*] --> OSNUTEK : disponent ustvari turo
-    OSNUTEK --> POTRJENA : disponent potrdi (pogoji izpolnjeni)
-    POTRJENA --> OSNUTEK : disponent odklene (voznik še ni začel)
-    POTRJENA --> V_DOSTAVI : voznik začne turo (najprej na datum odpreme)
-    V_DOSTAVI --> ZAKLJUCENA : vsi postanki označeni
-    ZAKLJUCENA --> [*]
+    [*] --> DRAFT : disponent ustvari turo
+    DRAFT --> CONFIRMED : disponent potrdi (pogoji izpolnjeni)
+    CONFIRMED --> DRAFT : disponent odklene (voznik še ni začel)
+    CONFIRMED --> IN_DELIVERY : voznik začne turo (najprej na datum odpreme)
+    IN_DELIVERY --> COMPLETED : voznik zaključi turo (vsi postanki označeni)
+    COMPLETED --> [*]
 ```
 
 ## Življenjski cikel naročila
 
 ```mermaid
 stateDiagram-v2
-    [*] --> NOVO : naročilo vneseno
-    NOVO --> PLANIRANO : dodano v turo
-    PLANIRANO --> NOVO : odstranjeno iz ture v osnutku
-    PLANIRANO --> DOSTAVLJENO : voznik označi dostavo
-    PLANIRANO --> NEDOSTAVLJENO : voznik označi nedostavo
-    NEDOSTAVLJENO --> PLANIRANO : dodano v novo turo
-    DOSTAVLJENO --> [*]
+    [*] --> NEW : naročilo vneseno
+    NEW --> PLANNED : dodano v turo
+    PLANNED --> NEW : odstranjeno iz ture v osnutku
+    PLANNED --> DELIVERED : voznik označi dostavo
+    PLANNED --> NOT_DELIVERED : voznik označi nedostavo
+    DELIVERED --> NOT_DELIVERED : voznik popravi oznako (tura v dostavi)
+    NOT_DELIVERED --> DELIVERED : voznik popravi oznako (tura v dostavi)
+    NOT_DELIVERED --> PLANNED : dodano v novo turo
+    DELIVERED --> [*]
 ```
 
 ## Pravila celovitosti podatkov
 
-- `Narocilo.palete` je večje od 0 in deljivo z 0,25.
-- Kapaciteta ture: vsota `teza_kg` vseh naročil v turi ≤ `nosilnost_kg` vozila **in** vsota `palete` ≤ `paletna_mesta` vozila. Tura s preseženo kapaciteto ne more preiti v `POTRJENA`.
-- Naročilo je lahko v turi le, če `Tura.datum_odpreme ≥ Narocilo.datum_prejema`. Če je `Tura.datum_odpreme > Narocilo.rok_odpreme`, se prikaže opozorilo.
-- Naročilo je lahko hkrati v največ eni turi s statusom `OSNUTEK`, `POTRJENA` ali `V_DOSTAVI`.
-- Voznik ima lahko hkrati največ eno turo v statusu `V_DOSTAVI`.
+- `Order.pallets` je večje od 0 in deljivo z 0,25.
+- Kapaciteta ture: vsota `weight_kg` vseh naročil v turi ≤ `max_load_kg` vozila **in** vsota `pallets` ≤ `pallet_spaces` vozila. Tura s preseženo kapaciteto ne more preiti v `CONFIRMED`.
+- Naročilo je lahko v turi le, če `Tour.dispatch_date ≥ Order.received_date`. Če je `Tour.dispatch_date > Order.dispatch_deadline`, se prikaže opozorilo.
+- Naročilo je lahko hkrati v največ eni turi s statusom `DRAFT`, `CONFIRMED` ali `IN_DELIVERY`.
+- Voznik ima lahko hkrati največ eno turo v statusu `IN_DELIVERY`.
 - Zaporedja postankov v turi so 1, 2, …, N brez lukenj in podvajanj.
-- Postankov ture, ki ni v statusu `OSNUTEK`, ni mogoče dodajati, odstranjevati ali preurejati.
+- Postankov ture, ki ni v statusu `DRAFT`, ni mogoče dodajati, odstranjevati ali preurejati.
 - Zaključenih tur, postankov in naročil se ne briše; uporabnikov, strank in vozil se ne briše, ampak deaktivira.

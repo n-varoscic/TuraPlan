@@ -27,4 +27,4 @@ Izbrana možnost: **OpenStreetMap (Leaflet + Nominatim)**, ker:
 - Dobro, ker MVP deluje tudi, če zunanja storitev ni dosegljiva.
 - Slabo, ker zračne razdalje niso dejanske ceste, zato predlog vrstnega reda ni vedno optimalen.
 - Slabo, ker Nominatim omejuje število zahtev (približno ena na sekundo), zato se koordinate shranijo pri stranki.
-- Slabo, ker bi pot po cestah zahtevala dodatno storitev (openrouteservice ali Google Maps) in nov ADR.
+- Slabo, ker pot po cestah zahteva dodatno storitev; to odločitev opisuje [ADR-07](07-osrm-za-pot-po-cestah.md).

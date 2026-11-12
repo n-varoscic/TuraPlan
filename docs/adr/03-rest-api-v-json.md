@@ -9,14 +9,14 @@
 
 ## Obravnavane možnosti
 
-- **REST API v JSON** – vsak vir ima svoj naslov (npr. `/api/ture/`), dejanja se izvedejo z metodami HTTP (GET, POST …).
+- **REST API v JSON** – vsak vir ima svoj naslov (npr. `/api/tours/`), dejanja se izvedejo z metodami HTTP (GET, POST …).
 - **GraphQL** – en sam naslov, frontend v poizvedbi sam določi, katere podatke želi.
 
 ## Odločitev
 
 Izbrana možnost: **REST API v JSON**, ker:
 
-- se viri in dejanja naravno preslikajo v naslove (npr. `/api/ture/{id}/potrdi/`),
+- se viri in dejanja naravno preslikajo v naslove (npr. `/api/tours/{id}/confirm/`),
 - so zasloni vnaprej določeni, zato prilagodljive poizvedbe GraphQL niso potrebne,
 - je vsako končno točko mogoče preizkusiti neposredno (brskalnik, Postman),
 - je REST najpogostejši način povezovanja z zunanjimi sistemi, kot je ERP.
