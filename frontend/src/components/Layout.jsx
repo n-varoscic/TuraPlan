@@ -1,7 +1,6 @@
 import { Link, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/useAuth.js";
-import { ROLE_LABELS, ROLES } from "../auth/roles.js";
-import OrderSearch from "./OrderSearch.jsx";
+import { ROLE_LABELS } from "../auth/roles.js";
 
 // Skupna postavitev vseh strani: glava zgoraj, vsebina strani spodaj
 export default function Layout() {
@@ -14,8 +13,6 @@ export default function Layout() {
           <Link className="navbar-brand" to="/">
             TuraPlan
           </Link>
-          {/* Iskanje naročil je na vseh straneh disponenta */}
-          {user?.role === ROLES.DISPATCHER && <OrderSearch />}
           {user && (
             <div className="d-flex align-items-center gap-3">
               <span className="small">
