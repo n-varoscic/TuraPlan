@@ -24,6 +24,7 @@ class StopSerializer(serializers.ModelSerializer):
     delivery_note = serializers.CharField(source="order.customer.delivery_note")
     address = serializers.CharField(source="order.customer.address")
     city = serializers.CharField(source="order.customer.city")
+    region = serializers.CharField(source="order.customer.region")
     phone = serializers.CharField(source="order.customer.phone")
     # Koordinate stranke za zemljevid, None pomeni, da lokacija ni določena
     lat = serializers.FloatField(source="order.customer.lat")
@@ -35,7 +36,7 @@ class StopSerializer(serializers.ModelSerializer):
         model = Stop
         fields = [
             "id", "sequence", "order_number", "customer_id", "customer", "delivery_note", "address", "city",
-            "phone", "lat", "lng", "weight_kg", "pallets", "driver_note", "result", "reason", "marked_at",
+            "region", "phone", "lat", "lng", "weight_kg", "pallets", "driver_note", "result", "reason", "marked_at",
         ]
 
 
@@ -107,13 +108,16 @@ class OrderSerializer(serializers.ModelSerializer):
     customer = serializers.CharField(source="customer.name")
     city = serializers.CharField(source="customer.city")
     region = serializers.CharField(source="customer.region")
+    # Koordinate stranke, da je nerazporejeno naročilo mogoče prikazati na zemljevidu
+    lat = serializers.FloatField(source="customer.lat")
+    lng = serializers.FloatField(source="customer.lng")
     is_late = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
         fields = [
-            "id", "number", "customer", "city", "region", "received_date", "dispatch_deadline",
-            "weight_kg", "pallets", "description", "status", "is_late",
+            "id", "number", "customer_id", "customer", "city", "region", "lat", "lng", "received_date",
+            "dispatch_deadline", "weight_kg", "pallets", "description", "status", "is_late",
         ]
 
     def get_is_late(self, order):
