@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { searchOrders } from "../api/client.js";
+import OrderSearch from "../components/OrderSearch.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import { formatDate } from "../format.js";
 import { ORDER_STATUS } from "../labels.js";
@@ -33,6 +34,12 @@ export default function OrderSearchPage() {
     <>
       <Link to="/tours" className="small">← Seznam tur</Link>
       <h1 className="h3 mt-2">Iskanje naročila</h1>
+      {/* Novo iskanje je mogoče tudi neposredno s strani z zadetki */}
+      <div className="row mb-3">
+        <div className="col-sm-6 col-lg-4">
+          <OrderSearch />
+        </div>
+      </div>
       <p className="text-muted">
         Iskano: »{query}« · številka naročila se mora ujemati v celoti, za naziv stranke vpiši vsaj 3 znake
       </p>

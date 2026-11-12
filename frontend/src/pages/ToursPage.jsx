@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getTours } from "../api/client.js";
 import DateRangePicker from "../components/DateRangePicker.jsx";
 import DeliveryProgress from "../components/DeliveryProgress.jsx";
+import OrderSearch from "../components/OrderSearch.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import TourLoad from "../components/TourLoad.jsx";
 import { formatDate, todayIso } from "../format.js";
@@ -74,6 +75,10 @@ export default function ToursPage() {
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
+        </div>
+        {/* Iskanje naročila je ob filtrih seznama, na desni strani vrstice */}
+        <div className="col-sm-6 col-lg-4 ms-auto">
+          <OrderSearch />
         </div>
       </div>
 
