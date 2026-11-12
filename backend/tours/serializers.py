@@ -4,8 +4,8 @@ from users.serializers import UserSerializer
 
 from .models import Order, Settings, Stop, Tour, Vehicle
 from .services import (
-    complete_errors, confirmation_errors, delivery_progress, route_distance_km, split_customers,
-    start_errors, tour_creation_errors, tour_load,
+    complete_errors, confirmation_errors, delivery_progress, not_delivered_reason, order_tour,
+    route_distance_km, split_customers, start_errors, tour_creation_errors, tour_load,
 )
 
 
@@ -123,3 +123,31 @@ class OrderSerializer(serializers.ModelSerializer):
     def get_is_late(self, order):
         date = self.context.get("date")
         return bool(date and date > order.dispatch_deadline)
+
+
+class OrderSearchSerializer(serializers.ModelSerializer):
+    """Zadetek iskanja: naročilo s statusom, turo in razlogom zadnje nedostave"""
+
+    customer = serializers.CharField(source="customer.name")
+    city = serializers.CharField(source="customer.city")
+    tour = serializers.SerializerMethodField()
+    not_delivered_reason = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = [
+            "id", "number", "customer", "city", "dispatch_deadline", "status", "tour", "not_delivered_reason",
+        ]
+
+    def get_tour(self, order):
+        tour = order_tour(order)
+        if tour is None:
+            return None
+        return {
+            "id": tour.id,
+            "dispatch_date": tour.dispatch_date,
+            "driver": f"{tour.driver.first_name} {tour.driver.last_name}",
+        }
+
+    def get_not_delivered_reason(self, order):
+        return not_delivered_reason(order)

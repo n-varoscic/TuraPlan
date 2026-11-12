@@ -9,13 +9,13 @@ from users.serializers import UserSerializer
 
 from .models import Order, Stop, Tour, Vehicle
 from .serializers import (
-    OrderSerializer, StopSerializer, TourCreateSerializer, TourDetailSerializer, TourListSerializer,
+    OrderSearchSerializer, OrderSerializer, StopSerializer, TourCreateSerializer, TourDetailSerializer, TourListSerializer,
     VehicleSerializer,
 )
 from .services import (
     add_stop, apply_suggested_order, available_drivers, available_vehicles, change_vehicle,
     complete_tour, confirm_tour, driver_tours, mark_stop, move_stop, move_stop_to, remove_stop,
-    road_route, start_tour, suggested_order_preview, unassigned_orders, unconfirm_tour,
+    road_route, search_orders, start_tour, suggested_order_preview, unassigned_orders, unconfirm_tour,
     update_customer_delivery_note, update_driver_note,
 )
 
@@ -112,6 +112,16 @@ class OrderListView(generics.ListAPIView):
 
     def get_serializer_context(self):
         return {**super().get_serializer_context(), "date": self.get_date()}
+
+
+class OrderSearchView(generics.ListAPIView):
+    """GET /api/orders/search/?q= poišče naročila po številki ali nazivu stranke"""
+
+    permission_classes = [IsDispatcher]
+    serializer_class = OrderSearchSerializer
+
+    def get_queryset(self):
+        return search_orders(self.request.query_params.get("q", ""))
 
 
 class TourStopsView(APIView):
